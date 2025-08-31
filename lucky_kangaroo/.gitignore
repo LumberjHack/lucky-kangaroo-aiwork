@@ -1,0 +1,13 @@
+# Virtual env
+venv/
+.env
+*.pyc
+__pycache__/
+instance/*.db
+instance/*.sqlite
+migrations/__pycache__/
+*.log
+.cache/
+.pytest_cache/
+.coverage
+.DS_Store

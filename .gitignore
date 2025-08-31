@@ -1,0 +1,9 @@
+﻿.env
+instance/
+*.pem
+*.p12
+*.key
+*secrets*
+.venv/
+.idea/
+.vscode/

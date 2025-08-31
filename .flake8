@@ -1,0 +1,13 @@
+[flake8]
+max-line-length = 120
+extend-exclude =
+    .git,
+    __pycache__,
+    .venv,
+    venv,
+    backend/venv,
+    **/site-packages/**
+ignore =
+    # allow some whitespace rules that conflict with Black
+    E203,
+    W503

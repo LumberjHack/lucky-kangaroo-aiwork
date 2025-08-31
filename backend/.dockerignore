@@ -1,0 +1,40 @@
+# Exclude VCS
+.git
+.gitignore
+
+# Python caches and build artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.build/
+build/
+dist/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Logs and temp
+logs/
+*.log
+uploads/
+/tmp/
+.cache/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Node (if any accidentally present)
+node_modules/
+
+# Misc
+*.sqlite*
+*.db

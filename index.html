@@ -1,0 +1,1407 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lucky Kangaroo - Plateforme d'Échange Collaborative</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .gradient-text { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .card-hover { transition: all 0.3s ease; }
+        .card-hover:hover { transform: translateY(-5px); box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+        .animate-float { animation: float 6s ease-in-out infinite; }
+        @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-20px); } }
+        .animate-pulse-slow { animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        .modal-backdrop { backdrop-filter: blur(10px); }
+        .upload-zone { border: 2px dashed #cbd5e1; transition: all 0.3s ease; }
+        .upload-zone.dragover { border-color: #667eea; background-color: #f8fafc; }
+        .photo-preview { position: relative; overflow: hidden; border-radius: 12px; }
+        .photo-filter { filter: none; transition: filter 0.3s ease; }
+        .photo-filter.sepia { filter: sepia(100%); }
+        .photo-filter.grayscale { filter: grayscale(100%); }
+        .photo-filter.vintage { filter: sepia(50%) contrast(1.2) brightness(1.1); }
+        .photo-filter.vibrant { filter: saturate(1.5) contrast(1.1); }
+    </style>
+</head>
+<body class="bg-gray-50" x-data="luckyKangarooApp()" x-init="init()">
+    
+    <!-- Header Navigation -->
+    <header class="bg-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <!-- Logo -->
+                <div class="flex items-center space-x-3">
+                    <div class="w-12 h-12 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center">
+                        <i class="fas fa-paw text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold gradient-text">Lucky Kangaroo</h1>
+                        <p class="text-sm text-gray-500">Échange Collaboratif</p>
+                    </div>
+                </div>
+
+                <!-- Navigation -->
+                <nav class="hidden md:flex space-x-8">
+                    <button @click="currentView = 'home'" :class="currentView === 'home' ? 'text-purple-600 border-b-2 border-purple-600' : 'text-gray-600 hover:text-purple-600'" class="pb-2 transition-colors">
+                        <i class="fas fa-home mr-2"></i>Accueil
+                    </button>
+                    <button @click="currentView = 'search'" :class="currentView === 'search' ? 'text-purple-600 border-b-2 border-purple-600' : 'text-gray-600 hover:text-purple-600'" class="pb-2 transition-colors">
+                        <i class="fas fa-search mr-2"></i>Rechercher
+                    </button>
+                    <button @click="currentView = 'create'" :class="currentView === 'create' ? 'text-purple-600 border-b-2 border-purple-600' : 'text-gray-600 hover:text-purple-600'" class="pb-2 transition-colors">
+                        <i class="fas fa-plus mr-2"></i>Créer Annonce
+                    </button>
+                    <button @click="currentView = 'chat'" :class="currentView === 'chat' ? 'text-purple-600 border-b-2 border-purple-600' : 'text-gray-600 hover:text-purple-600'" class="pb-2 transition-colors">
+                        <i class="fas fa-comments mr-2"></i>Messages
+                        <span x-show="unreadMessages > 0" class="bg-red-500 text-white text-xs rounded-full px-2 py-1 ml-1" x-text="unreadMessages"></span>
+                    </button>
+                    <button @click="currentView = 'profile'" :class="currentView === 'profile' ? 'text-purple-600 border-b-2 border-purple-600' : 'text-gray-600 hover:text-purple-600'" class="pb-2 transition-colors">
+                        <i class="fas fa-user mr-2"></i>Profil
+                    </button>
+                </nav>
+
+                <!-- Currency Selector -->
+                <div class="flex items-center space-x-2">
+                    <div class="relative">
+                        <select x-model="currency.selected" @change="changeCurrency()" class="px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                            <template x-for="curr in currency.available" :key="curr.code">
+                                <option :value="curr.code" x-text="curr.code + ' (' + curr.symbol + ')'"></option>
+                            </template>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- User Actions -->
+                <div class="flex items-center space-x-4">
+                    <div x-show="!user.isLoggedIn" class="space-x-2">
+                        <button @click="showLoginModal = true" class="px-4 py-2 text-purple-600 border border-purple-600 rounded-lg hover:bg-purple-50 transition-colors">
+                            Connexion
+                        </button>
+                        <button @click="showRegisterModal = true" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                            Inscription
+                        </button>
+                    </div>
+                    <div x-show="user.isLoggedIn" class="flex items-center space-x-3">
+                        <div class="relative">
+                            <button class="p-2 text-gray-600 hover:text-purple-600 relative">
+                                <i class="fas fa-bell text-xl"></i>
+                                <span x-show="notifications.length > 0" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center" x-text="notifications.length"></span>
+                            </button>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <img :src="user.avatar" :alt="user.name" class="w-8 h-8 rounded-full">
+                            <span class="text-sm font-medium" x-text="user.name"></span>
+                            <div class="flex items-center space-x-1">
+                                <i class="fas fa-star text-yellow-400 text-xs"></i>
+                                <span class="text-xs text-gray-600" x-text="user.trustScore + '%'"></span>
+                            </div>
+                        </div>
+                        <button @click="logout()" class="p-2 text-gray-600 hover:text-red-600">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="min-h-screen">
+        
+        <!-- Home View -->
+        <div x-show="currentView === 'home'" class="space-y-12">
+            
+            <!-- Hero Section -->
+            <section class="gradient-bg text-white py-20">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                    <div class="animate-float mb-8">
+                        <div class="w-24 h-24 bg-white bg-opacity-20 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <i class="fas fa-paw text-4xl"></i>
+                        </div>
+                    </div>
+                    <h1 class="text-5xl md:text-6xl font-bold mb-6">
+                        Échangez, Partagez, <br>
+                        <span class="text-yellow-300">Révolutionnez</span>
+                    </h1>
+                    <p class="text-xl md:text-2xl mb-8 text-white text-opacity-90 max-w-3xl mx-auto">
+                        La première plateforme d'échange collaborative avec IA avancée, géolocalisation intelligente et chaînes d'échange révolutionnaires
+                    </p>
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                        <button @click="currentView = 'search'" class="px-8 py-4 bg-white text-purple-600 rounded-lg font-semibold hover:bg-gray-100 transition-colors">
+                            <i class="fas fa-search mr-2"></i>Découvrir les Objets
+                        </button>
+                        <button @click="currentView = 'create'" class="px-8 py-4 bg-yellow-400 text-purple-900 rounded-lg font-semibold hover:bg-yellow-300 transition-colors">
+                            <i class="fas fa-plus mr-2"></i>Créer une Annonce
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Statistics -->
+            <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
+                    <div class="text-center">
+                        <div class="text-4xl font-bold gradient-text mb-2" x-text="stats.users"></div>
+                        <div class="text-gray-600">Utilisateurs Actifs</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-4xl font-bold gradient-text mb-2" x-text="stats.listings"></div>
+                        <div class="text-gray-600">Objets Disponibles</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-4xl font-bold gradient-text mb-2" x-text="stats.exchanges"></div>
+                        <div class="text-gray-600">Échanges Réalisés</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-4xl font-bold gradient-text mb-2" x-text="stats.satisfaction + '%'"></div>
+                        <div class="text-gray-600">Satisfaction</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Featured Listings -->
+            <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <h2 class="text-3xl font-bold text-center mb-12">Objets Populaires</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <template x-for="listing in featuredListings" :key="listing.id">
+                        <div class="bg-white rounded-xl shadow-lg overflow-hidden card-hover">
+                            <div class="relative">
+                                <img :src="listing.image" :alt="listing.title" class="w-full h-48 object-cover">
+                                <div class="absolute top-4 left-4 bg-white bg-opacity-90 px-3 py-1 rounded-full text-sm font-medium" x-text="listing.category"></div>
+                                <div class="absolute top-4 right-4 bg-red-500 text-white px-2 py-1 rounded-full text-sm">
+                                    <i class="fas fa-heart"></i>
+                                </div>
+                            </div>
+                            <div class="p-6">
+                                <h3 class="text-xl font-semibold mb-2" x-text="listing.title"></h3>
+                                <p class="text-gray-600 mb-4" x-text="listing.description"></p>
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="flex items-center space-x-2">
+                                        <img :src="listing.user.avatar" :alt="listing.user.name" class="w-8 h-8 rounded-full">
+                                        <div>
+                                            <div class="text-sm font-medium" x-text="listing.user.name"></div>
+                                            <div class="text-xs text-gray-500" x-text="listing.location"></div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center space-x-1">
+                                        <i class="fas fa-star text-yellow-400"></i>
+                                        <span class="text-sm" x-text="listing.user.trustScore + '%'"></span>
+                                    </div>
+                                </div>
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-2xl font-bold text-purple-600" x-text="formatPrice(listing.estimatedValue)"></span>
+                                            <button class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                                                Échanger
+                                            </button>
+                                        </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </section>
+
+            <!-- Features -->
+            <section class="bg-white py-16">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <h2 class="text-3xl font-bold text-center mb-12">Fonctionnalités Révolutionnaires</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        <div class="text-center p-6">
+                            <div class="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i class="fas fa-brain text-purple-600 text-2xl"></i>
+                            </div>
+                            <h3 class="text-xl font-semibold mb-3">IA Avancée</h3>
+                            <p class="text-gray-600">Matching intelligent avec 5 moteurs IA, reconnaissance d'objets et estimation de valeur automatique</p>
+                        </div>
+                        <div class="text-center p-6">
+                            <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i class="fas fa-map-marker-alt text-blue-600 text-2xl"></i>
+                            </div>
+                            <h3 class="text-xl font-semibold mb-3">Géolocalisation</h3>
+                            <p class="text-gray-600">Trouvez des objets près de chez vous avec calcul de distance précis et points de rencontre intelligents</p>
+                        </div>
+                        <div class="text-center p-6">
+                            <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i class="fas fa-link text-green-600 text-2xl"></i>
+                            </div>
+                            <h3 class="text-xl font-semibold mb-3">Chaînes d'Échange</h3>
+                            <p class="text-gray-600">Première mondiale : échanges A→B→C→A pour maximiser les opportunités</p>
+                        </div>
+                        <div class="text-center p-6">
+                            <div class="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i class="fas fa-shield-alt text-yellow-600 text-2xl"></i>
+                            </div>
+                            <h3 class="text-xl font-semibold mb-3">Sécurité Enterprise</h3>
+                            <p class="text-gray-600">Chiffrement niveau bancaire, trust score dynamique et modération IA</p>
+                        </div>
+                        <div class="text-center p-6">
+                            <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i class="fas fa-comments text-red-600 text-2xl"></i>
+                            </div>
+                            <h3 class="text-xl font-semibold mb-3">Chat Temps Réel</h3>
+                            <p class="text-gray-600">Messagerie instantanée avec traduction automatique et notifications multi-canal</p>
+                        </div>
+                        <div class="text-center p-6">
+                            <div class="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i class="fas fa-leaf text-indigo-600 text-2xl"></i>
+                            </div>
+                            <h3 class="text-xl font-semibold mb-3">Impact Écologique</h3>
+                            <p class="text-gray-600">Calculateur d'empreinte carbone évitée et badges écologiques</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Search View -->
+        <div x-show="currentView === 'search'" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="mb-8">
+                <h1 class="text-3xl font-bold mb-6">Rechercher des Objets</h1>
+                
+                <!-- Search Bar -->
+                <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+                    <div class="flex flex-col md:flex-row gap-4">
+                        <div class="flex-1">
+                            <input x-model="searchQuery" type="text" placeholder="Que recherchez-vous ?" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                        </div>
+                        <div class="flex gap-2">
+                            <select x-model="searchFilters.category" class="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                                <option value="">Toutes catégories</option>
+                                <option value="Électronique">Électronique</option>
+                                <option value="Informatique">Informatique</option>
+                                <option value="Sport">Sport</option>
+                                <option value="Photo">Photo</option>
+                                <option value="Audio">Audio</option>
+                                <option value="Gaming">Gaming</option>
+                            </select>
+                            <select x-model="searchFilters.distance" class="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                                <option value="5">5 km</option>
+                                <option value="10">10 km</option>
+                                <option value="25">25 km</option>
+                                <option value="50">50 km</option>
+                                <option value="100">100 km</option>
+                            </select>
+                            <button @click="performSearch()" class="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Search Results -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <template x-for="listing in searchResults" :key="listing.id">
+                        <div class="bg-white rounded-xl shadow-lg overflow-hidden card-hover">
+                            <div class="relative">
+                                <img :src="listing.image" :alt="listing.title" class="w-full h-48 object-cover">
+                                <div class="absolute top-4 left-4 bg-white bg-opacity-90 px-3 py-1 rounded-full text-sm font-medium" x-text="listing.category"></div>
+                                <div class="absolute top-4 right-4 bg-purple-500 text-white px-2 py-1 rounded-full text-sm" x-text="listing.distance + ' km'"></div>
+                            </div>
+                            <div class="p-6">
+                                <h3 class="text-xl font-semibold mb-2" x-text="listing.title"></h3>
+                                <p class="text-gray-600 mb-4" x-text="listing.description"></p>
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="flex items-center space-x-2">
+                                        <img :src="listing.user.avatar" :alt="listing.user.name" class="w-8 h-8 rounded-full">
+                                        <div>
+                                            <div class="text-sm font-medium" x-text="listing.user.name"></div>
+                                            <div class="text-xs text-gray-500" x-text="listing.location"></div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center space-x-1">
+                                        <i class="fas fa-star text-yellow-400"></i>
+                                        <span class="text-sm" x-text="listing.user.trustScore + '%'"></span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <div class="text-lg font-bold text-purple-600" x-text="'~' + listing.estimatedValue + '€'"></div>
+                                    <button @click="openChatWithUser(listing.user)" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                                        Contacter
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <!-- Create Listing View -->
+        <div x-show="currentView === 'create'" class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <h1 class="text-3xl font-bold mb-8">Créer une Annonce</h1>
+            
+            <div class="bg-white rounded-xl shadow-lg p-8">
+                <form @submit.prevent="createListing()">
+                    
+                    <!-- Basic Information -->
+                    <div class="mb-8">
+                        <h2 class="text-xl font-semibold mb-4">Informations de base</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Titre de l'annonce</label>
+                                <input x-model="newListing.title" type="text" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="Ex: iPhone 14 Pro en excellent état">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Catégorie</label>
+                                <select x-model="newListing.category" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                                    <option value="">Sélectionner une catégorie</option>
+                                    <option value="Électronique">Électronique</option>
+                                    <option value="Informatique">Informatique</option>
+                                    <option value="Sport">Sport</option>
+                                    <option value="Photo">Photo</option>
+                                    <option value="Audio">Audio</option>
+                                    <option value="Gaming">Gaming</option>
+                                    <option value="Mode">Mode</option>
+                                    <option value="Maison">Maison</option>
+                                    <option value="Livres">Livres</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mt-6">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Description détaillée</label>
+                            <textarea x-model="newListing.description" required rows="4" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="Décrivez votre objet en détail..."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Photo Upload Section -->
+                    <div class="mb-8">
+                        <h2 class="text-xl font-semibold mb-4">Photos de l'objet</h2>
+                        <div class="upload-zone p-8 border-2 border-dashed border-gray-300 rounded-lg text-center cursor-pointer hover:border-purple-500 transition-colors"
+                             @dragover.prevent="$event.target.classList.add('dragover')"
+                             @dragleave.prevent="$event.target.classList.remove('dragover')"
+                             @drop.prevent="handlePhotoDrop($event)">
+                            <div class="space-y-4">
+                                <div class="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto">
+                                    <i class="fas fa-camera text-purple-600 text-2xl"></i>
+                                </div>
+                                <div>
+                                    <p class="text-lg font-medium text-gray-700">Glissez vos photos ici</p>
+                                    <p class="text-gray-500">ou cliquez pour sélectionner</p>
+                                    <p class="text-sm text-gray-400 mt-2">JPG, PNG, WebP jusqu'à 10MB</p>
+                                </div>
+                                <input type="file" multiple accept="image/*" @change="handlePhotoSelect($event)" class="hidden">
+                                <button type="button" @click="$event.target.previousElementSibling.click()" class="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                                    Sélectionner des photos
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Photo Previews -->
+                        <div x-show="newListing.photos.length > 0" class="mt-6">
+                            <h3 class="text-lg font-medium mb-4">Photos sélectionnées</h3>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <template x-for="(photo, index) in newListing.photos" :key="index">
+                                    <div class="photo-preview">
+                                        <img :src="photo.preview" :alt="'Photo ' + (index + 1)" class="w-full h-32 object-cover photo-filter" :class="photo.filter">
+                                        <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center space-x-2">
+                                            <button @click="editPhoto(index)" class="p-2 bg-white text-gray-800 rounded-full hover:bg-gray-100">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button @click="removePhoto(index)" class="p-2 bg-red-500 text-white rounded-full hover:bg-red-600">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- AI Analysis Results -->
+                        <div x-show="aiAnalysis.detected" class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-6">
+                            <h3 class="text-lg font-semibold text-blue-800 mb-3">
+                                <i class="fas fa-brain mr-2"></i>Analyse IA de vos photos
+                            </h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <p class="text-sm text-blue-700 mb-1">Objet détecté</p>
+                                    <p class="font-medium" x-text="aiAnalysis.object"></p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-blue-700 mb-1">Valeur estimée</p>
+                                    <p class="font-medium" x-text="aiAnalysis.estimatedValue + '€'"></p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-blue-700 mb-1">État</p>
+                                    <p class="font-medium" x-text="aiAnalysis.condition"></p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-blue-700 mb-1">Confiance IA</p>
+                                    <p class="font-medium" x-text="aiAnalysis.confidence + '%'"></p>
+                                </div>
+                            </div>
+                            <div class="mt-4">
+                                <p class="text-sm text-blue-700 mb-2">Tags suggérés</p>
+                                <div class="flex flex-wrap gap-2">
+                                    <template x-for="tag in aiAnalysis.tags" :key="tag">
+                                        <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm" x-text="tag"></span>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Object Details -->
+                    <div class="mb-8">
+                        <h2 class="text-xl font-semibold mb-4">Détails de l'objet</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Marque</label>
+                                <input x-model="newListing.brand" type="text" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="Ex: Apple, Samsung...">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">État</label>
+                                <select x-model="newListing.condition" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                                    <option value="Neuf">Neuf</option>
+                                    <option value="Comme neuf">Comme neuf</option>
+                                    <option value="Très bon">Très bon</option>
+                                    <option value="Bon">Bon</option>
+                                    <option value="Correct">Correct</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Valeur estimée (€)</label>
+                                <input x-model="newListing.estimatedValue" type="number" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="Ex: 500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Location -->
+                    <div class="mb-8">
+                        <h2 class="text-xl font-semibold mb-4">Localisation</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Ville</label>
+                                <input x-model="newListing.city" type="text" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="Ex: Paris, Lyon...">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Distance max d'échange (km)</label>
+                                <select x-model="newListing.maxDistance" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                                    <option value="5">5 km</option>
+                                    <option value="10">10 km</option>
+                                    <option value="25">25 km</option>
+                                    <option value="50">50 km</option>
+                                    <option value="100">100 km</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <button type="button" @click="getCurrentLocation()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                                <i class="fas fa-map-marker-alt mr-2"></i>Utiliser ma position actuelle
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Exchange Preferences -->
+                    <div class="mb-8">
+                        <h2 class="text-xl font-semibold mb-4">Préférences d'échange</h2>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Que recherchez-vous en échange ?</label>
+                            <textarea x-model="newListing.wantedItems" rows="3" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="Décrivez ce que vous aimeriez recevoir en échange..."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="flex justify-end space-x-4">
+                        <button type="button" @click="currentView = 'home'" class="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+                            Annuler
+                        </button>
+                        <button type="submit" class="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                            <i class="fas fa-plus mr-2"></i>Publier l'annonce
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Chat View -->
+        <div x-show="currentView === 'chat'" class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <h1 class="text-3xl font-bold mb-8">Messages</h1>
+            
+            <div class="bg-white rounded-xl shadow-lg overflow-hidden" style="height: 600px;">
+                <div class="flex h-full">
+                    
+                    <!-- Chat List -->
+                    <div class="w-1/3 border-r border-gray-200">
+                        <div class="p-4 border-b border-gray-200">
+                            <h2 class="text-lg font-semibold">Conversations</h2>
+                        </div>
+                        <div class="overflow-y-auto h-full">
+                            <template x-for="chat in chatList" :key="chat.id">
+                                <div @click="selectChat(chat)" :class="selectedChat?.id === chat.id ? 'bg-purple-50 border-r-4 border-purple-500' : 'hover:bg-gray-50'" class="p-4 border-b border-gray-100 cursor-pointer">
+                                    <div class="flex items-center space-x-3">
+                                        <img :src="chat.user.avatar" :alt="chat.user.name" class="w-12 h-12 rounded-full">
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex items-center justify-between">
+                                                <p class="text-sm font-medium text-gray-900 truncate" x-text="chat.user.name"></p>
+                                                <p class="text-xs text-gray-500" x-text="chat.lastMessageTime"></p>
+                                            </div>
+                                            <p class="text-sm text-gray-500 truncate" x-text="chat.lastMessage"></p>
+                                            <div class="flex items-center mt-1">
+                                                <i class="fas fa-star text-yellow-400 text-xs mr-1"></i>
+                                                <span class="text-xs text-gray-500" x-text="chat.user.trustScore + '%'"></span>
+                                            </div>
+                                        </div>
+                                        <div x-show="chat.unreadCount > 0" class="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center" x-text="chat.unreadCount"></div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Chat Messages -->
+                    <div class="flex-1 flex flex-col">
+                        <div x-show="selectedChat" class="flex-1 flex flex-col">
+                            <!-- Chat Header -->
+                            <div class="p-4 border-b border-gray-200 bg-gray-50">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center space-x-3">
+                                        <img :src="selectedChat?.user.avatar" :alt="selectedChat?.user.name" class="w-10 h-10 rounded-full">
+                                        <div>
+                                            <h3 class="text-lg font-semibold" x-text="selectedChat?.user.name"></h3>
+                                            <p class="text-sm text-gray-500">En ligne</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center space-x-2">
+                                        <button class="p-2 text-gray-600 hover:text-purple-600">
+                                            <i class="fas fa-phone"></i>
+                                        </button>
+                                        <button class="p-2 text-gray-600 hover:text-purple-600">
+                                            <i class="fas fa-video"></i>
+                                        </button>
+                                        <button class="p-2 text-gray-600 hover:text-purple-600">
+                                            <i class="fas fa-info-circle"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Messages -->
+                            <div class="flex-1 overflow-y-auto p-4 space-y-4">
+                                <template x-for="message in selectedChat?.messages || []" :key="message.id">
+                                    <div :class="message.sender === 'me' ? 'flex justify-end' : 'flex justify-start'">
+                                        <div :class="message.sender === 'me' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-800'" class="max-w-xs lg:max-w-md px-4 py-2 rounded-lg">
+                                            <p x-text="message.text"></p>
+                                            <p :class="message.sender === 'me' ? 'text-purple-200' : 'text-gray-500'" class="text-xs mt-1" x-text="message.time"></p>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+
+                            <!-- Message Input -->
+                            <div class="p-4 border-t border-gray-200">
+                                <div class="flex space-x-2">
+                                    <input x-model="newMessage" @keyup.enter="sendMessage()" type="text" placeholder="Tapez votre message..." class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                                    <button @click="sendMessage()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                                        <i class="fas fa-paper-plane"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- No Chat Selected -->
+                        <div x-show="!selectedChat" class="flex-1 flex items-center justify-center">
+                            <div class="text-center">
+                                <i class="fas fa-comments text-6xl text-gray-300 mb-4"></i>
+                                <p class="text-xl text-gray-500">Sélectionnez une conversation</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile View -->
+        <div x-show="currentView === 'profile'" class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <h1 class="text-3xl font-bold mb-8">Mon Profil</h1>
+            
+            <div class="space-y-8">
+                
+                <!-- Profile Header -->
+                <div class="bg-white rounded-xl shadow-lg p-8">
+                    <div class="flex items-center space-x-6">
+                        <img :src="user.avatar" :alt="user.name" class="w-24 h-24 rounded-full">
+                        <div class="flex-1">
+                            <h2 class="text-2xl font-bold" x-text="user.name"></h2>
+                            <p class="text-gray-600" x-text="user.email"></p>
+                            <div class="flex items-center space-x-4 mt-2">
+                                <div class="flex items-center space-x-1">
+                                    <i class="fas fa-star text-yellow-400"></i>
+                                    <span class="font-semibold" x-text="user.trustScore + '%'"></span>
+                                    <span class="text-gray-500">Trust Score</span>
+                                </div>
+                                <div class="flex items-center space-x-1">
+                                    <i class="fas fa-map-marker-alt text-gray-400"></i>
+                                    <span class="text-gray-600" x-text="user.location"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <button class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                            <i class="fas fa-edit mr-2"></i>Modifier
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Statistics -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div class="bg-white rounded-xl shadow-lg p-6 text-center">
+                        <div class="text-3xl font-bold text-purple-600 mb-2" x-text="user.stats.listings"></div>
+                        <div class="text-gray-600">Annonces</div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-lg p-6 text-center">
+                        <div class="text-3xl font-bold text-green-600 mb-2" x-text="user.stats.exchanges"></div>
+                        <div class="text-gray-600">Échanges</div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-lg p-6 text-center">
+                        <div class="text-3xl font-bold text-blue-600 mb-2" x-text="user.stats.reviews"></div>
+                        <div class="text-gray-600">Avis</div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-lg p-6 text-center">
+                        <div class="text-3xl font-bold text-yellow-600 mb-2" x-text="user.stats.badges"></div>
+                        <div class="text-gray-600">Badges</div>
+                    </div>
+                </div>
+
+                <!-- My Listings -->
+                <div class="bg-white rounded-xl shadow-lg p-8">
+                    <h3 class="text-xl font-semibold mb-6">Mes Annonces</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <template x-for="listing in userListings" :key="listing.id">
+                            <div class="border border-gray-200 rounded-lg overflow-hidden">
+                                <img :src="listing.image" :alt="listing.title" class="w-full h-32 object-cover">
+                                <div class="p-4">
+                                    <h4 class="font-semibold mb-2" x-text="listing.title"></h4>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-sm text-gray-600" x-text="listing.status"></span>
+                                        <span class="text-sm font-medium" x-text="listing.views + ' vues'"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Login Modal -->
+    <div x-show="showLoginModal" class="fixed inset-0 bg-black bg-opacity-50 modal-backdrop flex items-center justify-center z-50" @click.self="showLoginModal = false">
+        <div class="bg-white rounded-xl p-8 max-w-md w-full mx-4">
+            <h2 class="text-2xl font-bold mb-6 text-center">Connexion</h2>
+            <form @submit.prevent="login()">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Email ou nom d'utilisateur</label>
+                        <input x-model="loginForm.username" type="text" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="alice_paris">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Mot de passe</label>
+                        <input x-model="loginForm.password" type="password" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="password123">
+                    </div>
+                </div>
+                <div class="mt-6 space-y-3">
+                    <button type="submit" class="w-full px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                        Se connecter
+                    </button>
+                    <p class="text-center text-sm text-gray-600">
+                        Pas de compte ? 
+                        <button type="button" @click="showLoginModal = false; showRegisterModal = true" class="text-purple-600 hover:underline">
+                            S'inscrire
+                        </button>
+                    </p>
+                </div>
+            </form>
+            <div class="mt-6 pt-6 border-t border-gray-200">
+                <p class="text-sm text-gray-600 mb-3">Comptes de démonstration :</p>
+                <div class="space-y-2">
+                    <button @click="quickLogin('alice_paris')" class="w-full text-left px-3 py-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                        <div class="font-medium">Alice (Paris)</div>
+                        <div class="text-sm text-gray-600">Trust Score: 95%</div>
+                    </button>
+                    <button @click="quickLogin('bob_lyon')" class="w-full text-left px-3 py-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                        <div class="font-medium">Bob (Lyon)</div>
+                        <div class="text-sm text-gray-600">Trust Score: 88%</div>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Register Modal -->
+    <div x-show="showRegisterModal" class="fixed inset-0 bg-black bg-opacity-50 modal-backdrop flex items-center justify-center z-50" @click.self="showRegisterModal = false">
+        <div class="bg-white rounded-xl p-8 max-w-md w-full mx-4">
+            <h2 class="text-2xl font-bold mb-6 text-center">Inscription</h2>
+            <form @submit.prevent="register()">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Nom complet</label>
+                        <input x-model="registerForm.name" type="text" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                        <input x-model="registerForm.email" type="email" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Nom d'utilisateur</label>
+                        <input x-model="registerForm.username" type="text" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Mot de passe</label>
+                        <input x-model="registerForm.password" type="password" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Ville</label>
+                        <input x-model="registerForm.city" type="text" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                    </div>
+                </div>
+                <div class="mt-6">
+                    <button type="submit" class="w-full px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                        S'inscrire
+                    </button>
+                    <p class="text-center text-sm text-gray-600 mt-3">
+                        Déjà un compte ? 
+                        <button type="button" @click="showRegisterModal = false; showLoginModal = true" class="text-purple-600 hover:underline">
+                            Se connecter
+                        </button>
+                    </p>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="fixed top-4 right-4 z-50 space-y-2">
+        <template x-for="notification in notifications" :key="notification.id">
+            <div class="bg-white border-l-4 border-green-500 rounded-lg shadow-lg p-4 max-w-sm">
+                <div class="flex items-center">
+                    <i class="fas fa-check-circle text-green-500 mr-3"></i>
+                    <p class="text-sm font-medium" x-text="notification.message"></p>
+                    <button @click="removeNotification(notification.id)" class="ml-auto text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        </template>
+    </div>
+
+    <script>
+        function luckyKangarooApp() {
+            return {
+                // Current view state
+                currentView: 'home',
+                
+                // Currency management
+                currency: {
+                    selected: 'CHF', // Default to CHF for French users
+                    rates: {
+                        CHF: 1,
+                        EUR: 1.08,
+                        USD: 1.12,
+                        GBP: 0.87,
+                        CAD: 1.51,
+                        JPY: 164.5
+                    },
+                    available: [
+                        { code: 'CHF', symbol: '₣', name: 'Franc Suisse' },
+                        { code: 'EUR', symbol: '€', name: 'Euro' },
+                        { code: 'USD', symbol: '$', name: 'Dollar US' },
+                        { code: 'GBP', symbol: '£', name: 'Livre Sterling' },
+                        { code: 'CAD', symbol: 'C$', name: 'Dollar Canadien' },
+                        { code: 'JPY', symbol: '¥', name: 'Yen Japonais' }
+                    ]
+                },
+                
+                // User state
+                user: {
+                    isLoggedIn: false,
+                    name: '',
+                    email: '',
+                    avatar: '',
+                    trustScore: 0,
+                    location: '',
+                    stats: {
+                        listings: 0,
+                        exchanges: 0,
+                        reviews: 0,
+                        badges: 0
+                    }
+                },
+
+                // Statistics
+                stats: {
+                    users: '50K+',
+                    listings: '200K+',
+                    exchanges: '150K+',
+                    satisfaction: 98
+                },
+
+                // Featured listings
+                featuredListings: [
+                    {
+                        id: 1,
+                        title: 'iPhone 14 Pro 256GB',
+                        description: 'Excellent état, avec boîte et accessoires',
+                        category: 'Électronique',
+                        image: 'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=400',
+                        estimatedValue: 900,
+                        location: 'Paris 15e',
+                        user: {
+                            name: 'Alice Martin',
+                            avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=100',
+                            trustScore: 95
+                        }
+                    },
+                    {
+                        id: 2,
+                        title: 'MacBook Pro M2 13"',
+                        description: 'Parfait pour le travail, très peu utilisé',
+                        category: 'Informatique',
+                        image: 'https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=400',
+                        estimatedValue: 1800,
+                        location: 'Lyon 3e',
+                        user: {
+                            name: 'Bob Dupont',
+                            avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100',
+                            trustScore: 88
+                        }
+                    },
+                    {
+                        id: 3,
+                        title: 'Vélo électrique Decathlon',
+                        description: 'Idéal pour les trajets urbains',
+                        category: 'Sport',
+                        image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400',
+                        estimatedValue: 800,
+                        location: 'Marseille 2e',
+                        user: {
+                            name: 'Claire Moreau',
+                            avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100',
+                            trustScore: 92
+                        }
+                    }
+                ],
+
+                // Search
+                searchQuery: '',
+                searchFilters: {
+                    category: '',
+                    distance: '25'
+                },
+                searchResults: [],
+
+                // New listing form
+                newListing: {
+                    title: '',
+                    description: '',
+                    category: '',
+                    brand: '',
+                    condition: 'Très bon',
+                    estimatedValue: '',
+                    city: '',
+                    maxDistance: '25',
+                    wantedItems: '',
+                    photos: []
+                },
+
+                // AI Analysis
+                aiAnalysis: {
+                    detected: false,
+                    object: '',
+                    estimatedValue: 0,
+                    condition: '',
+                    confidence: 0,
+                    tags: []
+                },
+
+                // Chat
+                selectedChat: null,
+                newMessage: '',
+                chatList: [
+                    {
+                        id: 1,
+                        user: {
+                            name: 'Alice Martin',
+                            avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=100',
+                            trustScore: 95
+                        },
+                        lastMessage: 'Salut ! Ton iPhone est toujours disponible ?',
+                        lastMessageTime: '14:30',
+                        unreadCount: 2,
+                        messages: [
+                            { id: 1, sender: 'other', text: 'Salut ! Ton iPhone est toujours disponible ?', time: '14:30' },
+                            { id: 2, sender: 'me', text: 'Oui, il est encore disponible !', time: '14:32' },
+                            { id: 3, sender: 'other', text: 'Super ! On peut se voir demain ?', time: '14:35' }
+                        ]
+                    },
+                    {
+                        id: 2,
+                        user: {
+                            name: 'Bob Dupont',
+                            avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100',
+                            trustScore: 88
+                        },
+                        lastMessage: 'Merci pour l\'échange !',
+                        lastMessageTime: 'Hier',
+                        unreadCount: 0,
+                        messages: [
+                            { id: 1, sender: 'other', text: 'Merci pour l\'échange !', time: 'Hier' },
+                            { id: 2, sender: 'me', text: 'De rien, à bientôt !', time: 'Hier' }
+                        ]
+                    }
+                ],
+
+                // User listings
+                userListings: [
+                    {
+                        id: 1,
+                        title: 'iPhone 14 Pro',
+                        image: 'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=200',
+                        status: 'Actif',
+                        views: 45
+                    },
+                    {
+                        id: 2,
+                        title: 'Casque Sony',
+                        image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200',
+                        status: 'En négociation',
+                        views: 23
+                    }
+                ],
+
+                // Modals
+                showLoginModal: false,
+                showRegisterModal: false,
+
+                // Forms
+                loginForm: {
+                    username: '',
+                    password: ''
+                },
+                registerForm: {
+                    name: '',
+                    email: '',
+                    username: '',
+                    password: '',
+                    city: ''
+                },
+
+                // Notifications
+                notifications: [],
+                unreadMessages: 2,
+
+                // Backend URL (local par défaut). Override possible via ?api=... ou localStorage.api
+                backendUrl: (function() {
+                    try {
+                        const url = new URL(window.location.href);
+                        const qp = url.searchParams.get('api');
+                        if (qp) return qp;
+                        const saved = localStorage.getItem('api');
+                        if (saved) return saved;
+                    } catch (e) {}
+                    return 'http://localhost:5000';
+                })(),
+
+                // Methods
+                init() {
+                    // Initialize search results with featured listings
+                    this.searchResults = [...this.featuredListings];
+                },
+
+                async login() {
+                    try {
+                        const response = await fetch(`${this.backendUrl}/api/auth/login`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                username: this.loginForm.username,
+                                password: this.loginForm.password
+                            })
+                        });
+
+                        if (response.ok) {
+                            const data = await response.json();
+                            this.user = {
+                                isLoggedIn: true,
+                                name: data.user.username,
+                                email: data.user.email || 'user@example.com',
+                                avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=100',
+                                trustScore: data.user.trust_score || 95,
+                                location: data.user.city || 'Paris',
+                                stats: {
+                                    listings: 3,
+                                    exchanges: 12,
+                                    reviews: 15,
+                                    badges: 8
+                                }
+                            };
+                            localStorage.setItem('token', data.token);
+                            this.showLoginModal = false;
+                            this.addNotification('Connexion réussie !');
+                        } else {
+                            this.addNotification('Erreur de connexion', 'error');
+                        }
+                    } catch (error) {
+                        console.error('Login error:', error);
+                        this.addNotification('Erreur de connexion', 'error');
+                    }
+                },
+
+                quickLogin(username) {
+                    this.loginForm.username = username;
+                    this.loginForm.password = 'password123';
+                    this.login();
+                },
+
+                async register() {
+                    try {
+                        const response = await fetch(`${this.backendUrl}/api/auth/register`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(this.registerForm)
+                        });
+
+                        if (response.ok) {
+                            this.showRegisterModal = false;
+                            this.addNotification('Inscription réussie ! Vous pouvez maintenant vous connecter.');
+                            this.showLoginModal = true;
+                        } else {
+                            this.addNotification('Erreur lors de l\'inscription', 'error');
+                        }
+                    } catch (error) {
+                        console.error('Register error:', error);
+                        this.addNotification('Erreur lors de l\'inscription', 'error');
+                    }
+                },
+
+                logout() {
+                    this.user.isLoggedIn = false;
+                    localStorage.removeItem('token');
+                    this.currentView = 'home';
+                    this.addNotification('Déconnexion réussie');
+                },
+
+                performSearch() {
+                    // Simulate search with filters
+                    let results = [...this.featuredListings];
+                    
+                    if (this.searchQuery) {
+                        results = results.filter(listing => 
+                            listing.title.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
+                            listing.description.toLowerCase().includes(this.searchQuery.toLowerCase())
+                        );
+                    }
+                    
+                    if (this.searchFilters.category) {
+                        results = results.filter(listing => listing.category === this.searchFilters.category);
+                    }
+                    
+                    // Add distance to results
+                    results = results.map(listing => ({
+                        ...listing,
+                        distance: Math.floor(Math.random() * parseInt(this.searchFilters.distance))
+                    }));
+                    
+                    this.searchResults = results;
+                },
+
+                handlePhotoSelect(event) {
+                    const files = Array.from(event.target.files);
+                    this.processPhotos(files);
+                },
+
+                handlePhotoDrop(event) {
+                    event.target.classList.remove('dragover');
+                    const files = Array.from(event.dataTransfer.files);
+                    this.processPhotos(files);
+                },
+
+                processPhotos(files) {
+                    files.forEach(file => {
+                        if (file.type.startsWith('image/')) {
+                            const reader = new FileReader();
+                            reader.onload = (e) => {
+                                const photo = {
+                                    file: file,
+                                    preview: e.target.result,
+                                    filter: ''
+                                };
+                                this.newListing.photos.push(photo);
+                                this.analyzePhoto(file);
+                            };
+                            reader.readAsDataURL(file);
+                        }
+                    });
+                },
+
+                analyzePhoto(file) {
+                    // Simulate AI analysis
+                    setTimeout(() => {
+                        const objects = {
+                            'iphone': {
+                                object: 'iPhone 14 Pro',
+                                estimatedValue: 900,
+                                condition: 'Excellent',
+                                confidence: 94,
+                                tags: ['smartphone', 'apple', 'premium', 'excellent état']
+                            },
+                            'macbook': {
+                                object: 'MacBook Pro M2',
+                                estimatedValue: 1800,
+                                condition: 'Très bon',
+                                confidence: 91,
+                                tags: ['ordinateur', 'apple', 'professionnel', 'performant']
+                            },
+                            'default': {
+                                object: 'Objet électronique',
+                                estimatedValue: 200,
+                                condition: 'Bon',
+                                confidence: 78,
+                                tags: ['électronique', 'objet', 'échange']
+                            }
+                        };
+
+                        const fileName = file.name.toLowerCase();
+                        let analysis = objects.default;
+                        
+                        if (fileName.includes('iphone')) analysis = objects.iphone;
+                        else if (fileName.includes('macbook')) analysis = objects.macbook;
+
+                        this.aiAnalysis = {
+                            detected: true,
+                            ...analysis
+                        };
+
+                        // Auto-fill form fields
+                        if (!this.newListing.title) this.newListing.title = analysis.object;
+                        if (!this.newListing.estimatedValue) this.newListing.estimatedValue = analysis.estimatedValue;
+                        if (!this.newListing.condition) this.newListing.condition = analysis.condition;
+                    }, 1500);
+                },
+
+                removePhoto(index) {
+                    this.newListing.photos.splice(index, 1);
+                    if (this.newListing.photos.length === 0) {
+                        this.aiAnalysis.detected = false;
+                    }
+                },
+
+                editPhoto(index) {
+                    // Cycle through filters
+                    const filters = ['', 'sepia', 'grayscale', 'vintage', 'vibrant'];
+                    const currentFilter = this.newListing.photos[index].filter;
+                    const currentIndex = filters.indexOf(currentFilter);
+                    const nextIndex = (currentIndex + 1) % filters.length;
+                    this.newListing.photos[index].filter = filters[nextIndex];
+                },
+
+                getCurrentLocation() {
+                    if (navigator.geolocation) {
+                        navigator.geolocation.getCurrentPosition((position) => {
+                            // Simulate reverse geocoding
+                            this.newListing.city = 'Paris'; // Would be actual city from coordinates
+                            this.addNotification('Position détectée : Paris');
+                        });
+                    } else {
+                        this.addNotification('Géolocalisation non supportée', 'error');
+                    }
+                },
+
+                async createListing() {
+                    if (!this.user.isLoggedIn) {
+                        this.addNotification('Vous devez être connecté pour créer une annonce', 'error');
+                        this.showLoginModal = true;
+                        return;
+                    }
+
+                    try {
+                        const token = localStorage.getItem('token');
+                        const response = await fetch(`${this.backendUrl}/api/listings`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${token}`
+                            },
+                            body: JSON.stringify({
+                                title: this.newListing.title,
+                                description: this.newListing.description,
+                                category: this.newListing.category,
+                                brand: this.newListing.brand,
+                                condition: this.newListing.condition,
+                                estimated_value: parseFloat(this.newListing.estimatedValue),
+                                city: this.newListing.city,
+                                wanted_items: this.newListing.wantedItems
+                            })
+                        });
+
+                        if (response.ok) {
+                            this.addNotification('Annonce créée avec succès !');
+                            this.currentView = 'home';
+                            // Reset form
+                            this.newListing = {
+                                title: '',
+                                description: '',
+                                category: '',
+                                brand: '',
+                                condition: 'Très bon',
+                                estimatedValue: '',
+                                city: '',
+                                maxDistance: '25',
+                                wantedItems: '',
+                                photos: []
+                            };
+                            this.aiAnalysis.detected = false;
+                        } else {
+                            this.addNotification('Erreur lors de la création de l\'annonce', 'error');
+                        }
+                    } catch (error) {
+                        console.error('Create listing error:', error);
+                        this.addNotification('Erreur lors de la création de l\'annonce', 'error');
+                    }
+                },
+
+                selectChat(chat) {
+                    this.selectedChat = chat;
+                    chat.unreadCount = 0;
+                    this.updateUnreadCount();
+                },
+
+                sendMessage() {
+                    if (this.newMessage.trim() && this.selectedChat) {
+                        const message = {
+                            id: Date.now(),
+                            sender: 'me',
+                            text: this.newMessage,
+                            time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+                        };
+                        this.selectedChat.messages.push(message);
+                        this.selectedChat.lastMessage = this.newMessage;
+                        this.selectedChat.lastMessageTime = message.time;
+                        this.newMessage = '';
+                    }
+                },
+
+                openChatWithUser(user) {
+                    // Find existing chat or create new one
+                    let chat = this.chatList.find(c => c.user.name === user.name);
+                    if (!chat) {
+                        chat = {
+                            id: Date.now(),
+                            user: user,
+                            lastMessage: '',
+                            lastMessageTime: 'Maintenant',
+                            unreadCount: 0,
+                            messages: []
+                        };
+                        this.chatList.unshift(chat);
+                    }
+                    this.currentView = 'chat';
+                    this.selectChat(chat);
+                },
+
+                updateUnreadCount() {
+                    this.unreadMessages = this.chatList.reduce((total, chat) => total + chat.unreadCount, 0);
+                },
+
+                // Currency functions
+                formatPrice(price, currency = null) {
+                    const curr = currency || this.currency.selected;
+                    const convertedPrice = this.convertPrice(price, curr);
+                    const currencyInfo = this.currency.available.find(c => c.code === curr);
+                    
+                    if (curr === 'JPY') {
+                        return `${currencyInfo.symbol}${Math.round(convertedPrice)}`;
+                    }
+                    return `${currencyInfo.symbol}${convertedPrice.toFixed(0)}`;
+                },
+
+                convertPrice(price, toCurrency) {
+                    // Convert from CHF base to target currency
+                    return price * this.currency.rates[toCurrency];
+                },
+
+                changeCurrency() {
+                    // Save currency preference
+                    localStorage.setItem('preferredCurrency', this.currency.selected);
+                    this.addNotification(`Devise changée vers ${this.currency.selected}`);
+                    
+                    // Update all displayed prices
+                    this.$nextTick(() => {
+                        // Trigger reactivity for price updates
+                        this.featuredListings = [...this.featuredListings];
+                        this.searchResults = [...this.searchResults];
+                    });
+                },
+
+                detectCurrencyByLocation() {
+                    if (navigator.geolocation) {
+                        navigator.geolocation.getCurrentPosition((position) => {
+                            const lat = position.coords.latitude;
+                            const lng = position.coords.longitude;
+                            
+                            // Simple geographic currency detection
+                            // In a real app, you'd use a geocoding service
+                            if (lat >= 45.8 && lat <= 47.8 && lng >= 5.9 && lng <= 10.5) {
+                                // Switzerland
+                                this.currency.selected = 'CHF';
+                            } else if (lat >= 41.3 && lat <= 51.1 && lng >= -5.1 && lng <= 9.6) {
+                                // France/Europe
+                                this.currency.selected = 'EUR';
+                            } else if (lat >= 49.2 && lat <= 60.9 && lng >= -8.2 && lng <= 1.8) {
+                                // UK
+                                this.currency.selected = 'GBP';
+                            } else if (lat >= 41.7 && lat <= 83.1 && lng >= -141.0 && lng <= -52.6) {
+                                // North America
+                                this.currency.selected = 'USD';
+                            }
+                            
+                            localStorage.setItem('preferredCurrency', this.currency.selected);
+                        });
+                    }
+                },
+
+                init() {
+                    // Load saved currency preference or detect by location
+                    const savedCurrency = localStorage.getItem('preferredCurrency');
+                    if (savedCurrency) {
+                        this.currency.selected = savedCurrency;
+                    } else {
+                        this.detectCurrencyByLocation();
+                    }
+                    
+                    // Check if user is logged in
+                    const token = localStorage.getItem('token');
+                    if (token) {
+                        this.user.isLoggedIn = true;
+                        this.user.name = localStorage.getItem('userName') || 'Utilisateur';
+                        this.user.email = localStorage.getItem('userEmail') || '';
+                    }
+                },
+
+                addNotification(message, type = 'success') {
+                    const notification = {
+                        id: Date.now(),
+                        message: message,
+                        type: type
+                    };
+                    this.notifications.push(notification);
+                    setTimeout(() => {
+                        this.removeNotification(notification.id);
+                    }, 5000);
+                },
+
+                removeNotification(id) {
+                    this.notifications = this.notifications.filter(n => n.id !== id);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
+

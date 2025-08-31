@@ -1,0 +1,27 @@
+# Normalisation des fins de ligne pour éviter les warnings CRLF/LF
+* text=auto
+
+# Scripts et code (LF)
+*.sh text eol=lf
+*.py text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.toml text eol=lf
+Dockerfile text eol=lf
+Makefile text eol=lf
+
+# Fichiers Windows (CRLF)
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+
+# Images et binaires (ne pas normaliser)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary

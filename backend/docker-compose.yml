@@ -1,0 +1,52 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    env_file: .env
+    environment:
+      - FLASK_ENV=production
+      # Utiliser l'infra commune existante via l'hôte (Docker Desktop)
+      - DATABASE_URL=postgresql+psycopg://lk:lkpass@host.docker.internal:5432/luckykangaroo
+      - SQLALCHEMY_DATABASE_URI=postgresql+psycopg://lk:lkpass@host.docker.internal:5432/luckykangaroo
+      - REDIS_URL=redis://host.docker.internal:6379/0
+      - CELERY_BROKER_URL=redis://host.docker.internal:6379/1
+      - CELERY_RESULT_BACKEND=redis://host.docker.internal:6379/1
+      - SOCKETIO_MESSAGE_QUEUE=redis://host.docker.internal:6379/2
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+
+  worker:
+    build: .
+    command: celery -A app.celery worker --loglevel=info
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_URL=postgresql+psycopg://lk:lkpass@host.docker.internal:5432/luckykangaroo
+      - SQLALCHEMY_DATABASE_URI=postgresql+psycopg://lk:lkpass@host.docker.internal:5432/luckykangaroo
+      - REDIS_URL=redis://host.docker.internal:6379/0
+      - CELERY_BROKER_URL=redis://host.docker.internal:6379/1
+      - CELERY_RESULT_BACKEND=redis://host.docker.internal:6379/1
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+
+  beat:
+    build: .
+    command: celery -A app.celery beat --loglevel=info
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_URL=postgresql+psycopg://lk:lkpass@host.docker.internal:5432/luckykangaroo
+      - SQLALCHEMY_DATABASE_URI=postgresql+psycopg://lk:lkpass@host.docker.internal:5432/luckykangaroo
+      - REDIS_URL=redis://host.docker.internal:6379/0
+      - CELERY_BROKER_URL=redis://host.docker.internal:6379/1
+      - CELERY_RESULT_BACKEND=redis://host.docker.internal:6379/1
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+

@@ -1,0 +1,14 @@
+line-length = 120
+extend-exclude = [
+  ".git",
+  "__pycache__",
+  ".venv",
+  "venv",
+  "backend/venv",
+  "**/site-packages/**",
+]
+select = ["E", "F", "I"]
+ignore = [
+  "E203",  # Whitespace before ':' (conflicts with Black)
+  "W503",  # Line break before binary operator
+]
