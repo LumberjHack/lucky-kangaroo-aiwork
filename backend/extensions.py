@@ -1,4 +1,4 @@
-import os
+﻿import os
 from datetime import timedelta
 import json
 from functools import wraps
@@ -16,7 +16,6 @@ from flask_socketio import SocketIO
 from flask_mail import Mail
 from flask_bcrypt import Bcrypt
 from flask_caching import Cache
-from flask_restx import Api
 from flask_principal import Principal, Permission, RoleNeed, Identity, identity_loaded, UserNeed
 from opensearchpy import OpenSearch
 from celery import Celery
@@ -191,15 +190,14 @@ def init_extensions(app: Flask) -> None:
                 cursor = dbapi_connection.cursor()
                 cursor.execute('PRAGMA foreign_keys=ON')
                 cursor.close()
-        
-        # Initialize database
-        db.create_all()
-        
-        # Configure Flask-Principal
+        # Initialize database (only for SQLite dev)
+        if app.config.get("SQLALCHEMY_DATABASE_URI", "").startswith("sqlite"):
+            db.create_all()
+# Configure Flask-Principal
         @identity_loaded.connect_via(app)
         def on_identity_loaded(sender: Flask, identity: Identity) -> None:
             """Add user roles to identity."""
-            from models.user import User  # Avoid circular imports
+            from backend.models.user import User  # Avoid circular imports
             
             # Set the identity user object
             identity.user = User.query.get(identity.id)
@@ -376,3 +374,4 @@ def rate_limited(max_per_minute=60):
             return f(*args, **kwargs)
         return wrapped
     return decorator
+
