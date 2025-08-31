@@ -1,3 +1,4 @@
+﻿from backend.extensions import db
 """Payment and subscription models for Lucky Kangaroo."""
 from datetime import datetime, timedelta
 from enum import Enum

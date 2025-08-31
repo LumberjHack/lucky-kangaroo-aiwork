@@ -1,18 +1,14 @@
+﻿from backend.extensions import db
 """
-Lucky Kangaroo - Modèle Notification Complet
-Modèle pour la gestion des notifications multi-canal
+Lucky Kangaroo - ModÃ¨le Notification Complet
+ModÃ¨le pour la gestion des notifications multi-canal
 """
-
-from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from enum import Enum
 import uuid
-
-db = SQLAlchemy()
-
 class NotificationType(Enum):
     """Types de notifications"""
-    # Échanges
+    # Ã‰changes
     EXCHANGE_REQUEST = "exchange_request"
     EXCHANGE_ACCEPTED = "exchange_accepted"
     EXCHANGE_CONFIRMED = "exchange_confirmed"
@@ -30,14 +26,14 @@ class NotificationType(Enum):
     LISTING_EXPIRED = "listing_expired"
     LISTING_FEATURED = "listing_featured"
     
-    # Système
+    # SystÃ¨me
     WELCOME = "welcome"
     ACCOUNT_VERIFIED = "account_verified"
     TRUST_SCORE_UPDATED = "trust_score_updated"
     PREMIUM_ACTIVATED = "premium_activated"
     PREMIUM_EXPIRED = "premium_expired"
     
-    # Sécurité
+    # SÃ©curitÃ©
     LOGIN_ALERT = "login_alert"
     PASSWORD_CHANGED = "password_changed"
     SUSPICIOUS_ACTIVITY = "suspicious_activity"
@@ -56,7 +52,7 @@ class NotificationChannel(Enum):
     WHATSAPP = "whatsapp"
 
 class NotificationPriority(Enum):
-    """Priorités de notification"""
+    """PrioritÃ©s de notification"""
     LOW = "low"
     NORMAL = "normal"
     HIGH = "high"
@@ -72,7 +68,7 @@ class NotificationStatus(Enum):
     CANCELLED = "cancelled"
 
 class Notification(db.Model):
-    """Modèle pour les notifications"""
+    """ModÃ¨le pour les notifications"""
     
     __tablename__ = 'notifications'
     
@@ -86,7 +82,7 @@ class Notification(db.Model):
     title = db.Column(db.String(200), nullable=False)
     message = db.Column(db.Text, nullable=False)
     
-    # Canaux et priorité
+    # Canaux et prioritÃ©
     channels = db.Column(db.Text, nullable=False)  # JSON array des canaux
     priority = db.Column(db.Enum(NotificationPriority), nullable=False, default=NotificationPriority.NORMAL)
     
@@ -94,16 +90,16 @@ class Notification(db.Model):
     status = db.Column(db.Enum(NotificationStatus), nullable=False, default=NotificationStatus.PENDING, index=True)
     is_read = db.Column(db.Boolean, nullable=False, default=False, index=True)
     
-    # Données contextuelles
+    # DonnÃ©es contextuelles
     related_object_type = db.Column(db.String(50), nullable=True)  # 'exchange', 'listing', 'user', etc.
     related_object_id = db.Column(db.Integer, nullable=True, index=True)
     action_url = db.Column(db.String(500), nullable=True)  # URL pour action directe
     
-    # Métadonnées
-    metadata = db.Column(db.Text, nullable=True)  # JSON pour données additionnelles
+    # MÃ©tadonnÃ©es
+    metadata = db.Column(db.Text, nullable=True)  # JSON pour donnÃ©es additionnelles
     
     # Planification
-    scheduled_for = db.Column(db.DateTime, nullable=True, index=True)  # Envoi programmé
+    scheduled_for = db.Column(db.DateTime, nullable=True, index=True)  # Envoi programmÃ©
     expires_at = db.Column(db.DateTime, nullable=True, index=True)  # Expiration
     
     # Suivi des canaux
@@ -137,12 +133,12 @@ class Notification(db.Model):
         self.title = title
         self.message = message
         
-        # Définir les canaux par défaut si non spécifiés
+        # DÃ©finir les canaux par dÃ©faut si non spÃ©cifiÃ©s
         if channels is None:
             channels = [NotificationChannel.IN_APP]
         self.set_channels(channels)
         
-        # Définir les autres attributs depuis kwargs
+        # DÃ©finir les autres attributs depuis kwargs
         for key, value in kwargs.items():
             if hasattr(self, key):
                 setattr(self, key, value)
@@ -158,7 +154,7 @@ class Notification(db.Model):
         return [NotificationChannel.IN_APP]
     
     def set_channels(self, channels_list):
-        """Définit les canaux depuis une liste"""
+        """DÃ©finit les canaux depuis une liste"""
         import json
         if isinstance(channels_list[0], NotificationChannel):
             channels_values = [ch.value for ch in channels_list]
@@ -167,7 +163,7 @@ class Notification(db.Model):
         self.channels = json.dumps(channels_values)
     
     def get_metadata_dict(self):
-        """Retourne les métadonnées sous forme de dictionnaire"""
+        """Retourne les mÃ©tadonnÃ©es sous forme de dictionnaire"""
         if self.metadata:
             import json
             try:
@@ -177,12 +173,12 @@ class Notification(db.Model):
         return {}
     
     def set_metadata(self, metadata_dict):
-        """Définit les métadonnées depuis un dictionnaire"""
+        """DÃ©finit les mÃ©tadonnÃ©es depuis un dictionnaire"""
         import json
         self.metadata = json.dumps(metadata_dict) if metadata_dict else None
     
     def mark_as_sent(self, channel=None):
-        """Marque la notification comme envoyée"""
+        """Marque la notification comme envoyÃ©e"""
         self.status = NotificationStatus.SENT
         self.sent_at = datetime.utcnow()
         
@@ -201,7 +197,7 @@ class Notification(db.Model):
                 self.whatsapp_sent_at = datetime.utcnow()
     
     def mark_as_delivered(self):
-        """Marque la notification comme livrée"""
+        """Marque la notification comme livrÃ©e"""
         if self.status == NotificationStatus.SENT:
             self.status = NotificationStatus.DELIVERED
             self.delivered_at = datetime.utcnow()
@@ -215,7 +211,7 @@ class Notification(db.Model):
                 self.status = NotificationStatus.READ
     
     def mark_as_failed(self, channel=None, error_message=None):
-        """Marque la notification comme échouée"""
+        """Marque la notification comme Ã©chouÃ©e"""
         self.status = NotificationStatus.FAILED
         
         if channel and error_message:
@@ -234,11 +230,11 @@ class Notification(db.Model):
             self.status = NotificationStatus.CANCELLED
     
     def is_expired(self):
-        """Vérifie si la notification a expiré"""
+        """VÃ©rifie si la notification a expirÃ©"""
         return self.expires_at and self.expires_at <= datetime.utcnow()
     
     def should_be_sent_now(self):
-        """Vérifie si la notification doit être envoyée maintenant"""
+        """VÃ©rifie si la notification doit Ãªtre envoyÃ©e maintenant"""
         if self.status != NotificationStatus.PENDING:
             return False
         
@@ -316,31 +312,31 @@ class Notification(db.Model):
 
     @staticmethod
     def create_exchange_notification(user_id, exchange, notification_type, additional_data=None):
-        """Crée une notification liée à un échange"""
+        """CrÃ©e une notification liÃ©e Ã  un Ã©change"""
         titles = {
-            NotificationType.EXCHANGE_REQUEST: "Nouvelle demande d'échange",
-            NotificationType.EXCHANGE_ACCEPTED: "Échange accepté !",
-            NotificationType.EXCHANGE_CONFIRMED: "Rendez-vous confirmé",
-            NotificationType.EXCHANGE_COMPLETED: "Échange terminé",
-            NotificationType.EXCHANGE_CANCELLED: "Échange annulé",
-            NotificationType.EXCHANGE_REMINDER: "Rappel d'échange"
+            NotificationType.EXCHANGE_REQUEST: "Nouvelle demande d'Ã©change",
+            NotificationType.EXCHANGE_ACCEPTED: "Ã‰change acceptÃ© !",
+            NotificationType.EXCHANGE_CONFIRMED: "Rendez-vous confirmÃ©",
+            NotificationType.EXCHANGE_COMPLETED: "Ã‰change terminÃ©",
+            NotificationType.EXCHANGE_CANCELLED: "Ã‰change annulÃ©",
+            NotificationType.EXCHANGE_REMINDER: "Rappel d'Ã©change"
         }
         
         messages = {
-            NotificationType.EXCHANGE_REQUEST: "Quelqu'un souhaite échanger avec vous",
-            NotificationType.EXCHANGE_ACCEPTED: "Votre demande d'échange a été acceptée",
-            NotificationType.EXCHANGE_CONFIRMED: "Le rendez-vous pour votre échange est confirmé",
-            NotificationType.EXCHANGE_COMPLETED: "Votre échange s'est bien déroulé",
-            NotificationType.EXCHANGE_CANCELLED: "L'échange a été annulé",
-            NotificationType.EXCHANGE_REMINDER: "N'oubliez pas votre rendez-vous d'échange"
+            NotificationType.EXCHANGE_REQUEST: "Quelqu'un souhaite Ã©changer avec vous",
+            NotificationType.EXCHANGE_ACCEPTED: "Votre demande d'Ã©change a Ã©tÃ© acceptÃ©e",
+            NotificationType.EXCHANGE_CONFIRMED: "Le rendez-vous pour votre Ã©change est confirmÃ©",
+            NotificationType.EXCHANGE_COMPLETED: "Votre Ã©change s'est bien dÃ©roulÃ©",
+            NotificationType.EXCHANGE_CANCELLED: "L'Ã©change a Ã©tÃ© annulÃ©",
+            NotificationType.EXCHANGE_REMINDER: "N'oubliez pas votre rendez-vous d'Ã©change"
         }
         
-        # Déterminer les canaux selon le type
+        # DÃ©terminer les canaux selon le type
         channels = [NotificationChannel.IN_APP, NotificationChannel.PUSH]
         if notification_type in [NotificationType.EXCHANGE_CONFIRMED, NotificationType.EXCHANGE_REMINDER]:
             channels.append(NotificationChannel.EMAIL)
         
-        # Déterminer la priorité
+        # DÃ©terminer la prioritÃ©
         priority = NotificationPriority.NORMAL
         if notification_type == NotificationType.EXCHANGE_REMINDER:
             priority = NotificationPriority.HIGH
@@ -350,8 +346,8 @@ class Notification(db.Model):
         notification = Notification(
             user_id=user_id,
             notification_type=notification_type,
-            title=titles.get(notification_type, "Notification d'échange"),
-            message=messages.get(notification_type, "Mise à jour de votre échange"),
+            title=titles.get(notification_type, "Notification d'Ã©change"),
+            message=messages.get(notification_type, "Mise Ã  jour de votre Ã©change"),
             channels=channels,
             priority=priority,
             related_object_type='exchange',
@@ -359,7 +355,7 @@ class Notification(db.Model):
             action_url=f"/exchanges/{exchange.uuid}"
         )
         
-        # Ajouter des métadonnées
+        # Ajouter des mÃ©tadonnÃ©es
         metadata = {
             'exchange_uuid': exchange.uuid,
             'exchange_status': exchange.status.value if exchange.status else None
@@ -374,7 +370,7 @@ class Notification(db.Model):
     
     @staticmethod
     def create_message_notification(user_id, chat_room, sender, message_preview):
-        """Crée une notification pour un nouveau message"""
+        """CrÃ©e une notification pour un nouveau message"""
         notification = Notification(
             user_id=user_id,
             notification_type=NotificationType.NEW_MESSAGE,
@@ -399,26 +395,26 @@ class Notification(db.Model):
     
     @staticmethod
     def create_listing_notification(user_id, listing, notification_type, actor_user=None):
-        """Crée une notification liée à une annonce"""
+        """CrÃ©e une notification liÃ©e Ã  une annonce"""
         titles = {
-            NotificationType.LISTING_LIKED: "Votre annonce a été likée",
-            NotificationType.LISTING_VIEWED: "Votre annonce a été consultée",
-            NotificationType.LISTING_EXPIRED: "Votre annonce a expiré",
+            NotificationType.LISTING_LIKED: "Votre annonce a Ã©tÃ© likÃ©e",
+            NotificationType.LISTING_VIEWED: "Votre annonce a Ã©tÃ© consultÃ©e",
+            NotificationType.LISTING_EXPIRED: "Votre annonce a expirÃ©",
             NotificationType.LISTING_FEATURED: "Votre annonce est mise en avant"
         }
         
         messages = {
-            NotificationType.LISTING_LIKED: f"Quelqu'un a liké votre annonce '{listing.title}'",
-            NotificationType.LISTING_VIEWED: f"Votre annonce '{listing.title}' a été consultée",
-            NotificationType.LISTING_EXPIRED: f"Votre annonce '{listing.title}' a expiré",
+            NotificationType.LISTING_LIKED: f"Quelqu'un a likÃ© votre annonce '{listing.title}'",
+            NotificationType.LISTING_VIEWED: f"Votre annonce '{listing.title}' a Ã©tÃ© consultÃ©e",
+            NotificationType.LISTING_EXPIRED: f"Votre annonce '{listing.title}' a expirÃ©",
             NotificationType.LISTING_FEATURED: f"Votre annonce '{listing.title}' est maintenant mise en avant"
         }
         
         if actor_user:
             if notification_type == NotificationType.LISTING_LIKED:
-                messages[notification_type] = f"{actor_user.get_full_name()} a liké votre annonce '{listing.title}'"
+                messages[notification_type] = f"{actor_user.get_full_name()} a likÃ© votre annonce '{listing.title}'"
             elif notification_type == NotificationType.LISTING_VIEWED:
-                messages[notification_type] = f"{actor_user.get_full_name()} a consulté votre annonce '{listing.title}'"
+                messages[notification_type] = f"{actor_user.get_full_name()} a consultÃ© votre annonce '{listing.title}'"
         
         # Canaux selon le type
         channels = [NotificationChannel.IN_APP]
@@ -429,7 +425,7 @@ class Notification(db.Model):
             user_id=user_id,
             notification_type=notification_type,
             title=titles.get(notification_type, "Notification d'annonce"),
-            message=messages.get(notification_type, "Mise à jour de votre annonce"),
+            message=messages.get(notification_type, "Mise Ã  jour de votre annonce"),
             channels=channels,
             priority=NotificationPriority.LOW,
             related_object_type='listing',
@@ -454,7 +450,7 @@ class Notification(db.Model):
     
     @staticmethod
     def get_user_notifications(user_id, unread_only=False, notification_type=None, limit=50, offset=0):
-        """Récupère les notifications d'un utilisateur"""
+        """RÃ©cupÃ¨re les notifications d'un utilisateur"""
         query = Notification.query.filter(Notification.user_id == user_id)
         
         if unread_only:
@@ -489,7 +485,7 @@ class Notification(db.Model):
     
     @staticmethod
     def get_pending_notifications():
-        """Récupère les notifications en attente d'envoi"""
+        """RÃ©cupÃ¨re les notifications en attente d'envoi"""
         return Notification.query.filter(
             Notification.status == NotificationStatus.PENDING,
             db.or_(

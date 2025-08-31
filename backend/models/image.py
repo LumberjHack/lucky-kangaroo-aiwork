@@ -1,16 +1,12 @@
+﻿from backend.extensions import db
 """
-Lucky Kangaroo - Modèle Image Complet
-Modèle pour la gestion des images et photos
+Lucky Kangaroo - ModÃ¨le Image Complet
+ModÃ¨le pour la gestion des images et photos
 """
-
-from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from enum import Enum
 import uuid
 import os
-
-db = SQLAlchemy()
-
 class ImageType(Enum):
     """Types d'images"""
     PROFILE = "profile"
@@ -27,7 +23,7 @@ class ImageStatus(Enum):
     FAILED = "failed"
 
 class Image(db.Model):
-    """Modèle pour les images et photos"""
+    """ModÃ¨le pour les images et photos"""
     
     __tablename__ = 'images'
     
@@ -43,7 +39,7 @@ class Image(db.Model):
     file_path = db.Column(db.String(500), nullable=False)
     url = db.Column(db.String(500), nullable=False)
     
-    # Métadonnées techniques
+    # MÃ©tadonnÃ©es techniques
     file_size = db.Column(db.Integer, nullable=False)  # Taille en bytes
     mime_type = db.Column(db.String(100), nullable=False)
     width = db.Column(db.Integer, nullable=True)
@@ -59,28 +55,28 @@ class Image(db.Model):
     thumbnail_url = db.Column(db.String(500), nullable=True)
     medium_url = db.Column(db.String(500), nullable=True)
     large_url = db.Column(db.String(500), nullable=True)
-    webp_url = db.Column(db.String(500), nullable=True)  # Version WebP optimisée
+    webp_url = db.Column(db.String(500), nullable=True)  # Version WebP optimisÃ©e
     
     # Analyse IA
     ai_analyzed = db.Column(db.Boolean, nullable=False, default=False)
-    ai_tags = db.Column(db.Text, nullable=True)  # Tags générés par l'IA (JSON)
-    ai_objects = db.Column(db.Text, nullable=True)  # Objets détectés (JSON)
+    ai_tags = db.Column(db.Text, nullable=True)  # Tags gÃ©nÃ©rÃ©s par l'IA (JSON)
+    ai_objects = db.Column(db.Text, nullable=True)  # Objets dÃ©tectÃ©s (JSON)
     ai_confidence = db.Column(db.Float, nullable=True)  # Confiance de l'analyse
-    ai_category = db.Column(db.String(100), nullable=True)  # Catégorie suggérée par l'IA
-    ai_condition = db.Column(db.String(50), nullable=True)  # Condition évaluée par l'IA
+    ai_category = db.Column(db.String(100), nullable=True)  # CatÃ©gorie suggÃ©rÃ©e par l'IA
+    ai_condition = db.Column(db.String(50), nullable=True)  # Condition Ã©valuÃ©e par l'IA
     ai_value_estimate = db.Column(db.Float, nullable=True)  # Estimation de valeur par l'IA
     
-    # Métadonnées EXIF
-    exif_data = db.Column(db.Text, nullable=True)  # Données EXIF (JSON)
+    # MÃ©tadonnÃ©es EXIF
+    exif_data = db.Column(db.Text, nullable=True)  # DonnÃ©es EXIF (JSON)
     camera_make = db.Column(db.String(100), nullable=True)
     camera_model = db.Column(db.String(100), nullable=True)
     taken_at = db.Column(db.DateTime, nullable=True)  # Date de prise de vue
     
-    # Géolocalisation (si disponible dans EXIF)
+    # GÃ©olocalisation (si disponible dans EXIF)
     latitude = db.Column(db.Float, nullable=True)
     longitude = db.Column(db.Float, nullable=True)
     
-    # Modération
+    # ModÃ©ration
     is_moderated = db.Column(db.Boolean, nullable=False, default=False)
     moderation_status = db.Column(db.String(50), nullable=True)  # approved, rejected, pending
     moderation_reason = db.Column(db.Text, nullable=True)
@@ -104,24 +100,24 @@ class Image(db.Model):
         self.file_size = file_size
         self.mime_type = mime_type
         
-        # Définir les autres attributs depuis kwargs
+        # DÃ©finir les autres attributs depuis kwargs
         for key, value in kwargs.items():
             if hasattr(self, key):
                 setattr(self, key, value)
     
     def mark_as_processed(self):
-        """Marque l'image comme traitée"""
+        """Marque l'image comme traitÃ©e"""
         self.status = ImageStatus.ACTIVE
         self.processed_at = datetime.utcnow()
     
     def mark_as_failed(self, reason=None):
-        """Marque l'image comme échouée"""
+        """Marque l'image comme Ã©chouÃ©e"""
         self.status = ImageStatus.FAILED
         if reason:
             self.moderation_reason = reason
     
     def set_as_main(self):
-        """Définit cette image comme image principale"""
+        """DÃ©finit cette image comme image principale"""
         if self.listing_id:
             # Retirer le statut principal des autres images de cette annonce
             Image.query.filter(
@@ -141,7 +137,7 @@ class Image(db.Model):
         return f"{size:.1f} TB"
     
     def get_dimensions_string(self):
-        """Retourne les dimensions sous forme de chaîne"""
+        """Retourne les dimensions sous forme de chaÃ®ne"""
         if self.width and self.height:
             return f"{self.width}x{self.height}"
         return "Dimensions inconnues"
@@ -153,15 +149,15 @@ class Image(db.Model):
         return None
     
     def is_landscape(self):
-        """Vérifie si l'image est en format paysage"""
+        """VÃ©rifie si l'image est en format paysage"""
         return self.width and self.height and self.width > self.height
     
     def is_portrait(self):
-        """Vérifie si l'image est en format portrait"""
+        """VÃ©rifie si l'image est en format portrait"""
         return self.width and self.height and self.height > self.width
     
     def is_square(self):
-        """Vérifie si l'image est carrée"""
+        """VÃ©rifie si l'image est carrÃ©e"""
         return self.width and self.height and self.width == self.height
     
     def get_ai_tags_list(self):
@@ -175,12 +171,12 @@ class Image(db.Model):
         return []
     
     def set_ai_tags(self, tags_list):
-        """Définit les tags IA depuis une liste"""
+        """DÃ©finit les tags IA depuis une liste"""
         import json
         self.ai_tags = json.dumps(tags_list) if tags_list else None
     
     def get_ai_objects_list(self):
-        """Retourne les objets détectés sous forme de liste"""
+        """Retourne les objets dÃ©tectÃ©s sous forme de liste"""
         if self.ai_objects:
             import json
             try:
@@ -190,12 +186,12 @@ class Image(db.Model):
         return []
     
     def set_ai_objects(self, objects_list):
-        """Définit les objets détectés depuis une liste"""
+        """DÃ©finit les objets dÃ©tectÃ©s depuis une liste"""
         import json
         self.ai_objects = json.dumps(objects_list) if objects_list else None
     
     def get_exif_data_dict(self):
-        """Retourne les données EXIF sous forme de dictionnaire"""
+        """Retourne les donnÃ©es EXIF sous forme de dictionnaire"""
         if self.exif_data:
             import json
             try:
@@ -205,12 +201,12 @@ class Image(db.Model):
         return {}
     
     def set_exif_data(self, exif_dict):
-        """Définit les données EXIF depuis un dictionnaire"""
+        """DÃ©finit les donnÃ©es EXIF depuis un dictionnaire"""
         import json
         self.exif_data = json.dumps(exif_dict) if exif_dict else None
     
     def get_best_url(self, size='original'):
-        """Retourne la meilleure URL selon la taille demandée"""
+        """Retourne la meilleure URL selon la taille demandÃ©e"""
         size_mapping = {
             'thumbnail': self.thumbnail_url,
             'medium': self.medium_url,
@@ -222,11 +218,11 @@ class Image(db.Model):
         return size_mapping.get(size) or self.url
     
     def increment_view(self):
-        """Incrémente le compteur de vues"""
+        """IncrÃ©mente le compteur de vues"""
         self.view_count += 1
     
     def increment_download(self):
-        """Incrémente le compteur de téléchargements"""
+        """IncrÃ©mente le compteur de tÃ©lÃ©chargements"""
         self.download_count += 1
     
     def delete_files(self):
@@ -311,7 +307,7 @@ class Image(db.Model):
         return data
     
     def to_simple_dict(self):
-        """Convertit en dictionnaire simplifié pour les listes"""
+        """Convertit en dictionnaire simplifiÃ© pour les listes"""
         return {
             'id': self.id,
             'url': self.url,
@@ -327,7 +323,7 @@ class Image(db.Model):
 
     @staticmethod
     def get_by_listing(listing_id, include_deleted=False):
-        """Récupère toutes les images d'une annonce"""
+        """RÃ©cupÃ¨re toutes les images d'une annonce"""
         query = Image.query.filter(Image.listing_id == listing_id)
         
         if not include_deleted:
@@ -337,7 +333,7 @@ class Image(db.Model):
     
     @staticmethod
     def get_main_image(listing_id):
-        """Récupère l'image principale d'une annonce"""
+        """RÃ©cupÃ¨re l'image principale d'une annonce"""
         return Image.query.filter(
             Image.listing_id == listing_id,
             Image.is_main == True,
@@ -346,7 +342,7 @@ class Image(db.Model):
     
     @staticmethod
     def get_user_images(user_id, image_type=None, limit=50):
-        """Récupère les images d'un utilisateur"""
+        """RÃ©cupÃ¨re les images d'un utilisateur"""
         query = Image.query.filter(
             Image.user_id == user_id,
             Image.status == ImageStatus.ACTIVE
@@ -359,10 +355,10 @@ class Image(db.Model):
     
     @staticmethod
     def cleanup_orphaned_images():
-        """Nettoie les images orphelines (sans annonce associée)"""
+        """Nettoie les images orphelines (sans annonce associÃ©e)"""
         from datetime import timedelta
         
-        # Images de plus de 24h sans annonce associée
+        # Images de plus de 24h sans annonce associÃ©e
         cutoff_date = datetime.utcnow() - timedelta(hours=24)
         
         orphaned_images = Image.query.filter(

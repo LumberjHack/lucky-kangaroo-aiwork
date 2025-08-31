@@ -1,35 +1,31 @@
+﻿from backend.extensions import db
 """
-Lucky Kangaroo - Modèle Exchange Complet
-Modèle pour la gestion des échanges entre utilisateurs
+Lucky Kangaroo - ModÃ¨le Exchange Complet
+ModÃ¨le pour la gestion des Ã©changes entre utilisateurs
 """
-
-from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from enum import Enum
 import uuid
-
-db = SQLAlchemy()
-
 class ExchangeStatus(Enum):
-    """Statuts possibles d'un échange"""
+    """Statuts possibles d'un Ã©change"""
     REQUESTED = "requested"        # Demande initiale
     COUNTER_OFFERED = "counter_offered"  # Contre-proposition
-    ACCEPTED = "accepted"          # Accepté par les deux parties
-    CONFIRMED = "confirmed"        # Confirmé (rendez-vous fixé)
-    IN_PROGRESS = "in_progress"    # En cours (échange physique)
-    COMPLETED = "completed"        # Terminé avec succès
-    CANCELLED = "cancelled"        # Annulé
+    ACCEPTED = "accepted"          # AcceptÃ© par les deux parties
+    CONFIRMED = "confirmed"        # ConfirmÃ© (rendez-vous fixÃ©)
+    IN_PROGRESS = "in_progress"    # En cours (Ã©change physique)
+    COMPLETED = "completed"        # TerminÃ© avec succÃ¨s
+    CANCELLED = "cancelled"        # AnnulÃ©
     DISPUTED = "disputed"          # En litige
-    EXPIRED = "expired"            # Expiré
+    EXPIRED = "expired"            # ExpirÃ©
 
 class ExchangeType(Enum):
-    """Types d'échange"""
-    DIRECT = "direct"              # Échange direct A ↔ B
-    CHAIN = "chain"                # Échange en chaîne A → B → C → A
-    MULTI = "multi"                # Échange multiple (plusieurs objets)
+    """Types d'Ã©change"""
+    DIRECT = "direct"              # Ã‰change direct A â†” B
+    CHAIN = "chain"                # Ã‰change en chaÃ®ne A â†’ B â†’ C â†’ A
+    MULTI = "multi"                # Ã‰change multiple (plusieurs objets)
 
 class Exchange(db.Model):
-    """Modèle pour les échanges entre utilisateurs"""
+    """ModÃ¨le pour les Ã©changes entre utilisateurs"""
     
     __tablename__ = 'exchanges'
     
@@ -41,7 +37,7 @@ class Exchange(db.Model):
     requester_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
     owner_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
     
-    # Objets échangés
+    # Objets Ã©changÃ©s
     offered_listing_id = db.Column(db.Integer, db.ForeignKey('listings.id'), nullable=False, index=True)
     requested_listing_id = db.Column(db.Integer, db.ForeignKey('listings.id'), nullable=False, index=True)
     
@@ -49,14 +45,14 @@ class Exchange(db.Model):
     exchange_type = db.Column(db.Enum(ExchangeType), nullable=False, default=ExchangeType.DIRECT)
     status = db.Column(db.Enum(ExchangeStatus), nullable=False, default=ExchangeStatus.REQUESTED, index=True)
     
-    # Détails de l'échange
+    # DÃ©tails de l'Ã©change
     message = db.Column(db.Text, nullable=True)  # Message initial du demandeur
-    counter_message = db.Column(db.Text, nullable=True)  # Réponse du propriétaire
+    counter_message = db.Column(db.Text, nullable=True)  # RÃ©ponse du propriÃ©taire
     
     # Valeurs et compensation
     offered_value = db.Column(db.Float, nullable=True)  # Valeur de l'objet offert
-    requested_value = db.Column(db.Float, nullable=True)  # Valeur de l'objet demandé
-    compensation_amount = db.Column(db.Float, nullable=True)  # Compensation monétaire si nécessaire
+    requested_value = db.Column(db.Float, nullable=True)  # Valeur de l'objet demandÃ©
+    compensation_amount = db.Column(db.Float, nullable=True)  # Compensation monÃ©taire si nÃ©cessaire
     compensation_currency = db.Column(db.String(10), nullable=False, default='EUR')
     compensation_direction = db.Column(db.String(20), nullable=True)  # 'to_requester' ou 'to_owner'
     
@@ -67,24 +63,24 @@ class Exchange(db.Model):
     meeting_datetime = db.Column(db.DateTime, nullable=True)
     meeting_notes = db.Column(db.Text, nullable=True)
     
-    # Évaluations
-    requester_rating = db.Column(db.Integer, nullable=True)  # Note donnée par le demandeur (1-5)
-    owner_rating = db.Column(db.Integer, nullable=True)  # Note donnée par le propriétaire (1-5)
+    # Ã‰valuations
+    requester_rating = db.Column(db.Integer, nullable=True)  # Note donnÃ©e par le demandeur (1-5)
+    owner_rating = db.Column(db.Integer, nullable=True)  # Note donnÃ©e par le propriÃ©taire (1-5)
     requester_review = db.Column(db.Text, nullable=True)  # Avis du demandeur
-    owner_review = db.Column(db.Text, nullable=True)  # Avis du propriétaire
+    owner_review = db.Column(db.Text, nullable=True)  # Avis du propriÃ©taire
     
-    # Chaîne d'échange (pour les échanges complexes)
-    chain_id = db.Column(db.String(36), nullable=True, index=True)  # ID de la chaîne d'échange
-    chain_position = db.Column(db.Integer, nullable=True)  # Position dans la chaîne
+    # ChaÃ®ne d'Ã©change (pour les Ã©changes complexes)
+    chain_id = db.Column(db.String(36), nullable=True, index=True)  # ID de la chaÃ®ne d'Ã©change
+    chain_position = db.Column(db.Integer, nullable=True)  # Position dans la chaÃ®ne
     chain_total_participants = db.Column(db.Integer, nullable=True)  # Nombre total de participants
     
-    # Modération et sécurité
+    # ModÃ©ration et sÃ©curitÃ©
     is_flagged = db.Column(db.Boolean, nullable=False, default=False)
     flag_reason = db.Column(db.String(200), nullable=True)
     flagged_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     flagged_at = db.Column(db.DateTime, nullable=True)
     
-    # Résolution de litige
+    # RÃ©solution de litige
     dispute_reason = db.Column(db.Text, nullable=True)
     dispute_resolution = db.Column(db.Text, nullable=True)
     resolved_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
@@ -108,24 +104,24 @@ class Exchange(db.Model):
         self.offered_listing_id = offered_listing_id
         self.requested_listing_id = requested_listing_id
         
-        # Définir une date d'expiration (7 jours par défaut)
+        # DÃ©finir une date d'expiration (7 jours par dÃ©faut)
         from datetime import timedelta
         self.expires_at = datetime.utcnow() + timedelta(days=7)
         
-        # Définir les autres attributs depuis kwargs
+        # DÃ©finir les autres attributs depuis kwargs
         for key, value in kwargs.items():
             if hasattr(self, key):
                 setattr(self, key, value)
     
     def accept(self, message=None):
-        """Accepte l'échange"""
+        """Accepte l'Ã©change"""
         if self.status == ExchangeStatus.REQUESTED:
             self.status = ExchangeStatus.ACCEPTED
             self.accepted_at = datetime.utcnow()
             if message:
                 self.counter_message = message
             
-            # Étendre la date d'expiration
+            # Ã‰tendre la date d'expiration
             from datetime import timedelta
             self.expires_at = datetime.utcnow() + timedelta(days=14)
     
@@ -140,7 +136,7 @@ class Exchange(db.Model):
                 self.compensation_direction = compensation_direction
     
     def confirm(self, meeting_location=None, meeting_datetime=None, meeting_notes=None):
-        """Confirme l'échange avec détails du rendez-vous"""
+        """Confirme l'Ã©change avec dÃ©tails du rendez-vous"""
         if self.status == ExchangeStatus.ACCEPTED:
             self.status = ExchangeStatus.CONFIRMED
             self.confirmed_at = datetime.utcnow()
@@ -153,18 +149,18 @@ class Exchange(db.Model):
                 self.meeting_notes = meeting_notes
     
     def start_exchange(self):
-        """Démarre l'échange physique"""
+        """DÃ©marre l'Ã©change physique"""
         if self.status == ExchangeStatus.CONFIRMED:
             self.status = ExchangeStatus.IN_PROGRESS
     
     def complete(self, requester_rating=None, owner_rating=None, 
                 requester_review=None, owner_review=None):
-        """Termine l'échange avec évaluations"""
+        """Termine l'Ã©change avec Ã©valuations"""
         if self.status == ExchangeStatus.IN_PROGRESS:
             self.status = ExchangeStatus.COMPLETED
             self.completed_at = datetime.utcnow()
             
-            # Enregistrer les évaluations
+            # Enregistrer les Ã©valuations
             if requester_rating is not None:
                 self.requester_rating = max(1, min(5, requester_rating))
             if owner_rating is not None:
@@ -174,17 +170,17 @@ class Exchange(db.Model):
             if owner_review:
                 self.owner_review = owner_review
             
-            # Mettre à jour les statistiques des utilisateurs
+            # Mettre Ã  jour les statistiques des utilisateurs
             self._update_user_stats()
             
-            # Marquer les annonces comme échangées
+            # Marquer les annonces comme Ã©changÃ©es
             if hasattr(self, 'offered_listing'):
                 self.offered_listing.mark_as_exchanged()
             if hasattr(self, 'requested_listing'):
                 self.requested_listing.mark_as_exchanged()
     
     def cancel(self, reason=None):
-        """Annule l'échange"""
+        """Annule l'Ã©change"""
         if self.status not in [ExchangeStatus.COMPLETED, ExchangeStatus.CANCELLED]:
             self.status = ExchangeStatus.CANCELLED
             self.cancelled_at = datetime.utcnow()
@@ -192,31 +188,31 @@ class Exchange(db.Model):
                 self.dispute_reason = reason
     
     def flag(self, user_id, reason):
-        """Signale l'échange"""
+        """Signale l'Ã©change"""
         self.is_flagged = True
         self.flagged_by = user_id
         self.flag_reason = reason
         self.flagged_at = datetime.utcnow()
     
     def dispute(self, reason):
-        """Met l'échange en litige"""
+        """Met l'Ã©change en litige"""
         self.status = ExchangeStatus.DISPUTED
         self.dispute_reason = reason
     
     def resolve_dispute(self, resolution, resolved_by):
-        """Résout un litige"""
+        """RÃ©sout un litige"""
         if self.status == ExchangeStatus.DISPUTED:
             self.dispute_resolution = resolution
             self.resolved_by = resolved_by
             self.resolved_at = datetime.utcnow()
-            # Le statut peut être changé vers COMPLETED ou CANCELLED selon la résolution
+            # Le statut peut Ãªtre changÃ© vers COMPLETED ou CANCELLED selon la rÃ©solution
     
     def is_expired(self):
-        """Vérifie si l'échange a expiré"""
+        """VÃ©rifie si l'Ã©change a expirÃ©"""
         return self.expires_at and self.expires_at <= datetime.utcnow()
     
     def can_be_rated_by(self, user_id):
-        """Vérifie si un utilisateur peut noter cet échange"""
+        """VÃ©rifie si un utilisateur peut noter cet Ã©change"""
         if self.status != ExchangeStatus.COMPLETED:
             return False
         
@@ -228,7 +224,7 @@ class Exchange(db.Model):
         return False
     
     def get_other_participant(self, user_id):
-        """Retourne l'autre participant de l'échange"""
+        """Retourne l'autre participant de l'Ã©change"""
         if user_id == self.requester_id:
             return self.owner_id
         elif user_id == self.owner_id:
@@ -236,7 +232,7 @@ class Exchange(db.Model):
         return None
     
     def get_user_role(self, user_id):
-        """Retourne le rôle de l'utilisateur dans l'échange"""
+        """Retourne le rÃ´le de l'utilisateur dans l'Ã©change"""
         if user_id == self.requester_id:
             return 'requester'
         elif user_id == self.owner_id:
@@ -244,42 +240,42 @@ class Exchange(db.Model):
         return None
     
     def calculate_value_difference(self):
-        """Calcule la différence de valeur entre les objets"""
+        """Calcule la diffÃ©rence de valeur entre les objets"""
         if self.offered_value and self.requested_value:
             return self.requested_value - self.offered_value
         return 0
     
     def get_meeting_location_string(self):
-        """Retourne la localisation du rendez-vous sous forme de chaîne"""
+        """Retourne la localisation du rendez-vous sous forme de chaÃ®ne"""
         if self.meeting_location:
             return self.meeting_location
         elif self.meeting_latitude and self.meeting_longitude:
             return f"Lat: {self.meeting_latitude}, Lng: {self.meeting_longitude}"
-        return "Lieu non défini"
+        return "Lieu non dÃ©fini"
     
     def get_average_rating(self):
-        """Calcule la note moyenne de l'échange"""
+        """Calcule la note moyenne de l'Ã©change"""
         ratings = [r for r in [self.requester_rating, self.owner_rating] if r is not None]
         if ratings:
             return sum(ratings) / len(ratings)
         return None
     
     def _update_user_stats(self):
-        """Met à jour les statistiques des utilisateurs après un échange réussi"""
-        # Mettre à jour les stats du demandeur
+        """Met Ã  jour les statistiques des utilisateurs aprÃ¨s un Ã©change rÃ©ussi"""
+        # Mettre Ã  jour les stats du demandeur
         if hasattr(self, 'requester'):
             self.requester.total_exchanges += 1
             self.requester.successful_exchanges += 1
             self.requester.update_trust_score()
         
-        # Mettre à jour les stats du propriétaire
+        # Mettre Ã  jour les stats du propriÃ©taire
         if hasattr(self, 'owner'):
             self.owner.total_exchanges += 1
             self.owner.successful_exchanges += 1
             self.owner.update_trust_score()
     
     def to_dict(self, include_participants=False, include_listings=False, user_perspective=None):
-        """Convertit l'échange en dictionnaire"""
+        """Convertit l'Ã©change en dictionnaire"""
         data = {
             'id': self.id,
             'uuid': self.uuid,
@@ -359,7 +355,7 @@ class Exchange(db.Model):
             if hasattr(self, 'requested_listing'):
                 data['listings']['requested_listing'] = self.requested_listing.to_dict()
         
-        # Perspective utilisateur (masquer certaines infos selon le rôle)
+        # Perspective utilisateur (masquer certaines infos selon le rÃ´le)
         if user_perspective:
             user_role = self.get_user_role(user_perspective)
             data['user_role'] = user_role
@@ -369,7 +365,7 @@ class Exchange(db.Model):
         return data
     
     def to_summary_dict(self):
-        """Convertit en dictionnaire résumé pour les listes"""
+        """Convertit en dictionnaire rÃ©sumÃ© pour les listes"""
         return {
             'id': self.id,
             'uuid': self.uuid,
@@ -390,7 +386,7 @@ class Exchange(db.Model):
 
     @staticmethod
     def get_user_exchanges(user_id, status=None, limit=50):
-        """Récupère les échanges d'un utilisateur"""
+        """RÃ©cupÃ¨re les Ã©changes d'un utilisateur"""
         query = Exchange.query.filter(
             db.or_(
                 Exchange.requester_id == user_id,
@@ -408,7 +404,7 @@ class Exchange(db.Model):
     
     @staticmethod
     def get_active_exchanges(user_id):
-        """Récupère les échanges actifs d'un utilisateur"""
+        """RÃ©cupÃ¨re les Ã©changes actifs d'un utilisateur"""
         active_statuses = [
             ExchangeStatus.REQUESTED,
             ExchangeStatus.COUNTER_OFFERED,
@@ -421,12 +417,12 @@ class Exchange(db.Model):
     
     @staticmethod
     def get_completed_exchanges(user_id):
-        """Récupère les échanges terminés d'un utilisateur"""
+        """RÃ©cupÃ¨re les Ã©changes terminÃ©s d'un utilisateur"""
         return Exchange.get_user_exchanges(user_id, status=ExchangeStatus.COMPLETED)
     
     @staticmethod
     def get_exchange_stats(user_id):
-        """Calcule les statistiques d'échange d'un utilisateur"""
+        """Calcule les statistiques d'Ã©change d'un utilisateur"""
         exchanges = Exchange.get_user_exchanges(user_id)
         
         stats = {
@@ -451,7 +447,7 @@ class Exchange(db.Model):
                                    ExchangeStatus.CONFIRMED, ExchangeStatus.IN_PROGRESS]:
                 stats['in_progress'] += 1
             
-            # Ratings donnés et reçus
+            # Ratings donnÃ©s et reÃ§us
             if exchange.requester_id == user_id and exchange.requester_rating:
                 ratings_given.append(exchange.requester_rating)
             if exchange.owner_id == user_id and exchange.owner_rating:
@@ -474,7 +470,7 @@ class Exchange(db.Model):
     
     @staticmethod
     def cleanup_expired_exchanges():
-        """Nettoie les échanges expirés"""
+        """Nettoie les Ã©changes expirÃ©s"""
         expired_exchanges = Exchange.query.filter(
             Exchange.expires_at <= datetime.utcnow(),
             Exchange.status.in_([

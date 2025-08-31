@@ -1,3 +1,4 @@
+﻿from backend.extensions import db
 """Gamification models for Lucky Kangaroo."""
 from datetime import datetime
 from ...extensions import db

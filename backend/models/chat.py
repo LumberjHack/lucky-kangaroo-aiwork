@@ -1,15 +1,11 @@
+﻿from backend.extensions import db
 """
-Lucky Kangaroo - Modèles Chat Complets
-Modèles pour la messagerie et chat en temps réel
+Lucky Kangaroo - ModÃ¨les Chat Complets
+ModÃ¨les pour la messagerie et chat en temps rÃ©el
 """
-
-from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from enum import Enum
 import uuid
-
-db = SQLAlchemy()
-
 class MessageType(Enum):
     """Types de messages"""
     TEXT = "text"
@@ -27,7 +23,7 @@ class MessageStatus(Enum):
     DELETED = "deleted"
 
 class ChatRoom(db.Model):
-    """Modèle pour les salles de chat"""
+    """ModÃ¨le pour les salles de chat"""
     
     __tablename__ = 'chat_rooms'
     
@@ -39,15 +35,15 @@ class ChatRoom(db.Model):
     user1_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
     user2_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
     
-    # Échange associé (optionnel)
+    # Ã‰change associÃ© (optionnel)
     exchange_id = db.Column(db.Integer, db.ForeignKey('exchanges.id'), nullable=True, index=True)
     
-    # Métadonnées
-    title = db.Column(db.String(200), nullable=True)  # Titre personnalisé du chat
+    # MÃ©tadonnÃ©es
+    title = db.Column(db.String(200), nullable=True)  # Titre personnalisÃ© du chat
     is_active = db.Column(db.Boolean, nullable=False, default=True)
     is_archived = db.Column(db.Boolean, nullable=False, default=False)
     
-    # Dernière activité
+    # DerniÃ¨re activitÃ©
     last_message_id = db.Column(db.Integer, nullable=True)
     last_message_at = db.Column(db.DateTime, nullable=True, index=True)
     last_activity_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
@@ -66,7 +62,7 @@ class ChatRoom(db.Model):
                               cascade='all, delete-orphan', order_by='ChatMessage.created_at.desc()')
     
     def __init__(self, user1_id, user2_id, exchange_id=None, **kwargs):
-        # S'assurer que user1_id < user2_id pour éviter les doublons
+        # S'assurer que user1_id < user2_id pour Ã©viter les doublons
         if user1_id > user2_id:
             user1_id, user2_id = user2_id, user1_id
             
@@ -74,7 +70,7 @@ class ChatRoom(db.Model):
         self.user2_id = user2_id
         self.exchange_id = exchange_id
         
-        # Définir les autres attributs depuis kwargs
+        # DÃ©finir les autres attributs depuis kwargs
         for key, value in kwargs.items():
             if hasattr(self, key):
                 setattr(self, key, value)
@@ -96,27 +92,27 @@ class ChatRoom(db.Model):
         return 0
     
     def increment_unread_count(self, for_user_id):
-        """Incrémente le compteur de messages non lus"""
+        """IncrÃ©mente le compteur de messages non lus"""
         if for_user_id == self.user1_id:
             self.unread_count_user1 += 1
         elif for_user_id == self.user2_id:
             self.unread_count_user2 += 1
     
     def reset_unread_count(self, user_id):
-        """Remet à zéro le compteur de messages non lus"""
+        """Remet Ã  zÃ©ro le compteur de messages non lus"""
         if user_id == self.user1_id:
             self.unread_count_user1 = 0
         elif user_id == self.user2_id:
             self.unread_count_user2 = 0
     
     def update_last_message(self, message):
-        """Met à jour les informations du dernier message"""
+        """Met Ã  jour les informations du dernier message"""
         self.last_message_id = message.id
         self.last_message_at = message.created_at
         self.last_activity_at = datetime.utcnow()
         self.total_messages += 1
         
-        # Incrémenter le compteur de non-lus pour l'autre participant
+        # IncrÃ©menter le compteur de non-lus pour l'autre participant
         other_user_id = self.get_other_participant(message.sender_id)
         if other_user_id:
             self.increment_unread_count(other_user_id)
@@ -127,16 +123,16 @@ class ChatRoom(db.Model):
         self.is_active = False
     
     def unarchive(self):
-        """Désarchive le chat"""
+        """DÃ©sarchive le chat"""
         self.is_archived = False
         self.is_active = True
     
     def get_title(self):
-        """Retourne le titre du chat ou un titre par défaut"""
+        """Retourne le titre du chat ou un titre par dÃ©faut"""
         if self.title:
             return self.title
         
-        # Titre basé sur les participants (nécessite de charger les utilisateurs)
+        # Titre basÃ© sur les participants (nÃ©cessite de charger les utilisateurs)
         if hasattr(self, 'user1') and hasattr(self, 'user2'):
             return f"Chat avec {self.user1.get_full_name()} et {self.user2.get_full_name()}"
         
@@ -184,7 +180,7 @@ class ChatRoom(db.Model):
 
     @staticmethod
     def get_or_create_room(user1_id, user2_id, exchange_id=None):
-        """Récupère ou crée une salle de chat entre deux utilisateurs"""
+        """RÃ©cupÃ¨re ou crÃ©e une salle de chat entre deux utilisateurs"""
         # S'assurer que user1_id < user2_id
         if user1_id > user2_id:
             user1_id, user2_id = user2_id, user1_id
@@ -204,7 +200,7 @@ class ChatRoom(db.Model):
     
     @staticmethod
     def get_user_chats(user_id, include_archived=False, limit=50):
-        """Récupère les chats d'un utilisateur"""
+        """RÃ©cupÃ¨re les chats d'un utilisateur"""
         query = ChatRoom.query.filter(
             db.or_(
                 ChatRoom.user1_id == user_id,
@@ -218,7 +214,7 @@ class ChatRoom(db.Model):
         return query.order_by(ChatRoom.last_activity_at.desc()).limit(limit).all()
 
 class ChatMessage(db.Model):
-    """Modèle pour les messages de chat"""
+    """ModÃ¨le pour les messages de chat"""
     
     __tablename__ = 'chat_messages'
     
@@ -235,12 +231,12 @@ class ChatMessage(db.Model):
     message_type = db.Column(db.Enum(MessageType), nullable=False, default=MessageType.TEXT)
     content = db.Column(db.Text, nullable=False)
     
-    # Métadonnées
+    # MÃ©tadonnÃ©es
     status = db.Column(db.Enum(MessageStatus), nullable=False, default=MessageStatus.SENT, index=True)
     is_edited = db.Column(db.Boolean, nullable=False, default=False)
     edited_at = db.Column(db.DateTime, nullable=True)
     
-    # Pièces jointes
+    # PiÃ¨ces jointes
     image_id = db.Column(db.Integer, db.ForeignKey('images.id'), nullable=True)
     image_url = db.Column(db.String(500), nullable=True)
     
@@ -249,8 +245,8 @@ class ChatMessage(db.Model):
     longitude = db.Column(db.Float, nullable=True)
     location_name = db.Column(db.String(200), nullable=True)
     
-    # Données système (pour les messages système)
-    system_data = db.Column(db.Text, nullable=True)  # JSON pour données additionnelles
+    # DonnÃ©es systÃ¨me (pour les messages systÃ¨me)
+    system_data = db.Column(db.Text, nullable=True)  # JSON pour donnÃ©es additionnelles
     
     # Timestamps
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True)
@@ -264,13 +260,13 @@ class ChatMessage(db.Model):
         self.content = content
         self.message_type = message_type
         
-        # Définir les autres attributs depuis kwargs
+        # DÃ©finir les autres attributs depuis kwargs
         for key, value in kwargs.items():
             if hasattr(self, key):
                 setattr(self, key, value)
     
     def mark_as_delivered(self):
-        """Marque le message comme livré"""
+        """Marque le message comme livrÃ©"""
         if self.status == MessageStatus.SENT:
             self.status = MessageStatus.DELIVERED
             self.delivered_at = datetime.utcnow()
@@ -291,10 +287,10 @@ class ChatMessage(db.Model):
     def soft_delete(self):
         """Suppression logique du message"""
         self.status = MessageStatus.DELETED
-        self.content = "[Message supprimé]"
+        self.content = "[Message supprimÃ©]"
     
     def get_system_data_dict(self):
-        """Retourne les données système sous forme de dictionnaire"""
+        """Retourne les donnÃ©es systÃ¨me sous forme de dictionnaire"""
         if self.system_data:
             import json
             try:
@@ -304,12 +300,12 @@ class ChatMessage(db.Model):
         return {}
     
     def set_system_data(self, data_dict):
-        """Définit les données système depuis un dictionnaire"""
+        """DÃ©finit les donnÃ©es systÃ¨me depuis un dictionnaire"""
         import json
         self.system_data = json.dumps(data_dict) if data_dict else None
     
     def get_location_string(self):
-        """Retourne la localisation sous forme de chaîne"""
+        """Retourne la localisation sous forme de chaÃ®ne"""
         if self.location_name:
             return self.location_name
         elif self.latitude and self.longitude:
@@ -355,7 +351,7 @@ class ChatMessage(db.Model):
 
     @staticmethod
     def get_chat_messages(chat_room_id, limit=50, offset=0, include_deleted=False):
-        """Récupère les messages d'un chat"""
+        """RÃ©cupÃ¨re les messages d'un chat"""
         query = ChatMessage.query.filter(ChatMessage.chat_room_id == chat_room_id)
         
         if not include_deleted:
@@ -375,7 +371,7 @@ class ChatMessage(db.Model):
         for message in messages:
             message.mark_as_read()
         
-        # Réinitialiser le compteur de non-lus dans la salle de chat
+        # RÃ©initialiser le compteur de non-lus dans la salle de chat
         chat_room = ChatRoom.query.get(chat_room_id)
         if chat_room:
             chat_room.reset_unread_count(user_id)
@@ -384,10 +380,10 @@ class ChatMessage(db.Model):
     
     @staticmethod
     def create_system_message(chat_room_id, content, system_data=None, exchange_id=None):
-        """Crée un message système"""
+        """CrÃ©e un message systÃ¨me"""
         message = ChatMessage(
             chat_room_id=chat_room_id,
-            sender_id=None,  # Messages système n'ont pas d'expéditeur
+            sender_id=None,  # Messages systÃ¨me n'ont pas d'expÃ©diteur
             content=content,
             message_type=MessageType.SYSTEM,
             exchange_id=exchange_id
@@ -400,8 +396,8 @@ class ChatMessage(db.Model):
     
     @staticmethod
     def create_exchange_request_message(chat_room_id, sender_id, exchange_id, offered_item, requested_item):
-        """Crée un message de demande d'échange"""
-        content = f"Demande d'échange : {offered_item} contre {requested_item}"
+        """CrÃ©e un message de demande d'Ã©change"""
+        content = f"Demande d'Ã©change : {offered_item} contre {requested_item}"
         
         system_data = {
             'type': 'exchange_request',
@@ -423,15 +419,15 @@ class ChatMessage(db.Model):
     
     @staticmethod
     def create_exchange_update_message(chat_room_id, exchange_id, status_change, additional_info=None):
-        """Crée un message de mise à jour d'échange"""
+        """CrÃ©e un message de mise Ã  jour d'Ã©change"""
         status_messages = {
-            'accepted': "Échange accepté ! 🎉",
-            'confirmed': "Rendez-vous confirmé ! 📅",
-            'completed': "Échange terminé avec succès ! ✅",
-            'cancelled': "Échange annulé 😞"
+            'accepted': "Ã‰change acceptÃ© ! ðŸŽ‰",
+            'confirmed': "Rendez-vous confirmÃ© ! ðŸ“…",
+            'completed': "Ã‰change terminÃ© avec succÃ¨s ! âœ…",
+            'cancelled': "Ã‰change annulÃ© ðŸ˜ž"
         }
         
-        content = status_messages.get(status_change, f"Statut de l'échange mis à jour : {status_change}")
+        content = status_messages.get(status_change, f"Statut de l'Ã©change mis Ã  jour : {status_change}")
         
         if additional_info:
             content += f" - {additional_info}"
@@ -445,7 +441,7 @@ class ChatMessage(db.Model):
         
         message = ChatMessage(
             chat_room_id=chat_room_id,
-            sender_id=None,  # Message système
+            sender_id=None,  # Message systÃ¨me
             content=content,
             message_type=MessageType.EXCHANGE_UPDATE,
             exchange_id=exchange_id

@@ -1,17 +1,13 @@
+﻿from backend.extensions import db
 """
-Lucky Kangaroo - Modèle User Complet
-Modèle utilisateur avec tous les champs requis pour une plateforme fonctionnelle
+Lucky Kangaroo - ModÃ¨le User Complet
+ModÃ¨le utilisateur avec tous les champs requis pour une plateforme fonctionnelle
 """
-
-from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 import uuid
-
-db = SQLAlchemy()
-
 class User(db.Model):
-    """Modèle utilisateur complet pour Lucky Kangaroo"""
+    """ModÃ¨le utilisateur complet pour Lucky Kangaroo"""
     
     __tablename__ = 'users'
     
@@ -33,7 +29,7 @@ class User(db.Model):
     profile_photo_url = db.Column(db.String(500), nullable=True)
     profile_photo_id = db.Column(db.Integer, db.ForeignKey('images.id'), nullable=True)
     
-    # Géolocalisation
+    # GÃ©olocalisation
     latitude = db.Column(db.Float, nullable=True, index=True)
     longitude = db.Column(db.Float, nullable=True, index=True)
     address = db.Column(db.String(200), nullable=True)
@@ -41,13 +37,13 @@ class User(db.Model):
     postal_code = db.Column(db.String(20), nullable=True)
     country = db.Column(db.String(100), nullable=True, default='France')
     
-    # Système de confiance et réputation
+    # SystÃ¨me de confiance et rÃ©putation
     trust_score = db.Column(db.Float, nullable=False, default=50.0)  # 0-100
     reputation_score = db.Column(db.Float, nullable=False, default=0.0)
     total_exchanges = db.Column(db.Integer, nullable=False, default=0)
     successful_exchanges = db.Column(db.Integer, nullable=False, default=0)
     
-    # Préférences utilisateur
+    # PrÃ©fÃ©rences utilisateur
     preferred_language = db.Column(db.String(10), nullable=False, default='fr')
     preferred_currency = db.Column(db.String(10), nullable=False, default='EUR')
     max_distance_km = db.Column(db.Integer, nullable=False, default=50)  # Rayon de recherche
@@ -68,7 +64,7 @@ class User(db.Model):
     email_verified = db.Column(db.Boolean, nullable=False, default=False)
     phone_verified = db.Column(db.Boolean, nullable=False, default=False)
     
-    # Sécurité
+    # SÃ©curitÃ©
     last_login_at = db.Column(db.DateTime, nullable=True)
     login_count = db.Column(db.Integer, nullable=False, default=0)
     failed_login_attempts = db.Column(db.Integer, nullable=False, default=0)
@@ -91,28 +87,28 @@ class User(db.Model):
         self.email = email
         self.set_password(password)
         
-        # Définir les autres attributs depuis kwargs
+        # DÃ©finir les autres attributs depuis kwargs
         for key, value in kwargs.items():
             if hasattr(self, key):
                 setattr(self, key, value)
     
     def set_password(self, password):
-        """Définit le mot de passe hashé"""
+        """DÃ©finit le mot de passe hashÃ©"""
         self.password_hash = generate_password_hash(password)
     
     def check_password(self, password):
-        """Vérifie le mot de passe"""
+        """VÃ©rifie le mot de passe"""
         return check_password_hash(self.password_hash, password)
     
     def update_trust_score(self):
-        """Met à jour le score de confiance basé sur les échanges"""
+        """Met Ã  jour le score de confiance basÃ© sur les Ã©changes"""
         if self.total_exchanges == 0:
             self.trust_score = 50.0
         else:
             success_rate = self.successful_exchanges / self.total_exchanges
-            # Score basé sur le taux de succès et le nombre d'échanges
-            base_score = success_rate * 80  # 80% max pour le taux de succès
-            experience_bonus = min(self.total_exchanges * 2, 20)  # 20% max pour l'expérience
+            # Score basÃ© sur le taux de succÃ¨s et le nombre d'Ã©changes
+            base_score = success_rate * 80  # 80% max pour le taux de succÃ¨s
+            experience_bonus = min(self.total_exchanges * 2, 20)  # 20% max pour l'expÃ©rience
             self.trust_score = min(base_score + experience_bonus, 100.0)
     
     def get_full_name(self):
@@ -125,7 +121,7 @@ class User(db.Model):
             return self.username
     
     def get_location_string(self):
-        """Retourne la localisation sous forme de chaîne"""
+        """Retourne la localisation sous forme de chaÃ®ne"""
         if self.city and self.country:
             return f"{self.city}, {self.country}"
         elif self.city:
@@ -133,17 +129,17 @@ class User(db.Model):
         elif self.address:
             return self.address
         else:
-            return "Localisation non définie"
+            return "Localisation non dÃ©finie"
     
     def is_near(self, other_user, max_distance_km=None):
-        """Vérifie si un autre utilisateur est à proximité"""
+        """VÃ©rifie si un autre utilisateur est Ã  proximitÃ©"""
         if not max_distance_km:
             max_distance_km = self.max_distance_km
         
         if not (self.latitude and self.longitude and other_user.latitude and other_user.longitude):
             return False
         
-        # Calcul de distance Haversine (simplifié)
+        # Calcul de distance Haversine (simplifiÃ©)
         import math
         
         lat1, lon1 = math.radians(self.latitude), math.radians(self.longitude)
@@ -178,12 +174,12 @@ class User(db.Model):
         return round(distance_km, 2)
     
     def can_login(self):
-        """Vérifie si l'utilisateur peut se connecter"""
+        """VÃ©rifie si l'utilisateur peut se connecter"""
         if not self.is_active:
-            return False, "Compte désactivé"
+            return False, "Compte dÃ©sactivÃ©"
         
         if self.account_locked_until and self.account_locked_until > datetime.utcnow():
-            return False, "Compte temporairement verrouillé"
+            return False, "Compte temporairement verrouillÃ©"
         
         return True, "OK"
     
@@ -203,7 +199,7 @@ class User(db.Model):
                 self.account_locked_until = datetime.utcnow() + timedelta(minutes=30)
     
     def update_activity(self):
-        """Met à jour la dernière activité"""
+        """Met Ã  jour la derniÃ¨re activitÃ©"""
         self.last_activity_at = datetime.utcnow()
     
     def to_dict(self, include_sensitive=False):
@@ -287,18 +283,18 @@ class User(db.Model):
 
     @staticmethod
     def find_nearby_users(latitude, longitude, max_distance_km=50, limit=20):
-        """Trouve les utilisateurs à proximité d'une position"""
-        # Requête simplifiée - en production, utiliser une requête géospatiale optimisée
+        """Trouve les utilisateurs Ã  proximitÃ© d'une position"""
+        # RequÃªte simplifiÃ©e - en production, utiliser une requÃªte gÃ©ospatiale optimisÃ©e
         users = User.query.filter(
             User.latitude.isnot(None),
             User.longitude.isnot(None),
             User.is_active == True
-        ).limit(limit * 3).all()  # Récupérer plus pour filtrer ensuite
+        ).limit(limit * 3).all()  # RÃ©cupÃ©rer plus pour filtrer ensuite
         
         nearby_users = []
         for user in users:
             if user.latitude and user.longitude:
-                # Calcul de distance simplifié
+                # Calcul de distance simplifiÃ©
                 import math
                 lat1, lon1 = math.radians(latitude), math.radians(longitude)
                 lat2, lon2 = math.radians(user.latitude), math.radians(user.longitude)
