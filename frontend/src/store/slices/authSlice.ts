@@ -1,162 +1,169 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { User, AuthTokens, LoginCredentials, RegisterData, UserProfile } from '../../types';
-import AuthService from '../../services/authService';
+import api from '../../services/api';
 
-// Types pour le state
-interface AuthState {
+// Types
+export interface User {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone?: string;
+  is_verified: boolean;
+  is_active: boolean;
+  created_at: string;
+  last_login?: string;
+}
+
+export interface AuthTokens {
+  access_token: string;
+  refresh_token: string;
+}
+
+export interface AuthState {
   user: User | null;
   tokens: AuthTokens | null;
   isAuthenticated: boolean;
-  isLoading: boolean;
+  loading: boolean;
   error: string | null;
-  profile: UserProfile | null;
 }
 
-// State initial
 const initialState: AuthState = {
   user: null,
   tokens: null,
   isAuthenticated: false,
-  isLoading: false,
-  error: null,
-  profile: null,
+  loading: false,
+  error: null
 };
 
-// Thunks asynchrones
-export const loginUser = createAsyncThunk(
-  'auth/login',
-  async (credentials: LoginCredentials, { rejectWithValue }) => {
-    try {
-      const result = await AuthService.login(credentials);
-      return result;
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Échec de la connexion');
-    }
-  }
-);
-
-export const registerUser = createAsyncThunk(
+// Async thunks
+export const register = createAsyncThunk(
   'auth/register',
-  async (data: RegisterData, { rejectWithValue }) => {
+  async (userData: {
+    email: string;
+    password: string;
+    first_name: string;
+    last_name: string;
+    phone?: string;
+  }, { rejectWithValue }) => {
     try {
-      const result = await AuthService.register(data);
-      return result;
+      const response = await api.post('/auth/register', userData);
+      
+      // Stocker les tokens
+      if (response.data.tokens) {
+        localStorage.setItem('access_token', response.data.tokens.access_token);
+        localStorage.setItem('refresh_token', response.data.tokens.refresh_token);
+      }
+      
+      return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Échec de l\'inscription');
+      return rejectWithValue(error.response?.data?.message || 'Erreur lors de l\'inscription');
     }
   }
 );
 
-export const logoutUser = createAsyncThunk(
-  'auth/logout',
-  async (_, { rejectWithValue }) => {
+export const login = createAsyncThunk(
+  'auth/login',
+  async (credentials: { email: string; password: string }, { rejectWithValue }) => {
     try {
-      await AuthService.logout();
-      return true;
+      const response = await api.post('/auth/login', credentials);
+      
+      // Stocker les tokens
+      if (response.data.tokens) {
+        localStorage.setItem('access_token', response.data.tokens.access_token);
+        localStorage.setItem('refresh_token', response.data.tokens.refresh_token);
+      }
+      
+      return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Échec de la déconnexion');
+      return rejectWithValue(error.response?.data?.message || 'Erreur lors de la connexion');
     }
   }
 );
 
-export const refreshUserToken = createAsyncThunk(
+export const refreshToken = createAsyncThunk(
   'auth/refreshToken',
   async (_, { rejectWithValue }) => {
     try {
-      const result = await AuthService.refreshToken();
-      return result;
+      const response = await api.post('/auth/refresh');
+      
+      // Mettre à jour le token d'accès
+      if (response.data.access_token) {
+        localStorage.setItem('access_token', response.data.access_token);
+      }
+      
+      return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Échec du rafraîchissement du token');
+      return rejectWithValue(error.response?.data?.message || 'Erreur lors du rafraîchissement du token');
     }
   }
 );
 
-export const fetchUserProfile = createAsyncThunk(
-  'auth/fetchProfile',
+export const getCurrentUser = createAsyncThunk(
+  'auth/getCurrentUser',
   async (_, { rejectWithValue }) => {
     try {
-      const profile = await AuthService.getProfile();
-      return profile;
+      const response = await api.get('/auth/me');
+      return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Échec de la récupération du profil');
+      return rejectWithValue(error.response?.data?.message || 'Erreur lors de la récupération des informations');
     }
   }
 );
 
-export const updateUserProfile = createAsyncThunk(
-  'auth/updateProfile',
-  async (profileData: Partial<User>, { rejectWithValue }) => {
+export const logout = createAsyncThunk(
+  'auth/logout',
+  async (_, { rejectWithValue }) => {
     try {
-      const updatedUser = await AuthService.updateProfile(profileData);
-      return updatedUser;
+      await api.post('/auth/logout');
+      
+      // Supprimer les tokens
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      localStorage.removeItem('user');
+      
+      return null;
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Échec de la mise à jour du profil');
+      // Même en cas d'erreur, on déconnecte localement
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      localStorage.removeItem('user');
+      return null;
     }
   }
 );
 
-export const changeUserPassword = createAsyncThunk(
-  'auth/changePassword',
-  async (
-    { currentPassword, newPassword }: { currentPassword: string; newPassword: string },
-    { rejectWithValue }
-  ) => {
-    try {
-      await AuthService.changePassword(currentPassword, newPassword);
-      return true;
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Échec du changement de mot de passe');
-    }
-  }
-);
-
-export const deleteUserAccount = createAsyncThunk(
-  'auth/deleteAccount',
-  async (password: string, { rejectWithValue }) => {
-    try {
-      await AuthService.deleteAccount(password);
-      return true;
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Échec de la suppression du compte');
-    }
-  }
-);
-
-export const verifyUserEmail = createAsyncThunk(
+export const verifyEmail = createAsyncThunk(
   'auth/verifyEmail',
   async (token: string, { rejectWithValue }) => {
     try {
-      await AuthService.verifyEmail(token);
-      return true;
+      const response = await api.post(`/auth/verify-email/${token}`);
+      return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Échec de la vérification de l\'email');
+      return rejectWithValue(error.response?.data?.message || 'Erreur lors de la vérification de l\'email');
     }
   }
 );
 
-export const forgotUserPassword = createAsyncThunk(
+export const forgotPassword = createAsyncThunk(
   'auth/forgotPassword',
   async (email: string, { rejectWithValue }) => {
     try {
-      await AuthService.forgotPassword(email);
-      return true;
+      const response = await api.post('/auth/forgot-password', { email });
+      return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Échec de l\'envoi de l\'email de réinitialisation');
+      return rejectWithValue(error.response?.data?.message || 'Erreur lors de la demande de réinitialisation');
     }
   }
 );
 
-export const resetUserPassword = createAsyncThunk(
+export const resetPassword = createAsyncThunk(
   'auth/resetPassword',
-  async (
-    { token, newPassword }: { token: string; newPassword: string },
-    { rejectWithValue }
-  ) => {
+  async (data: { token: string; password: string }, { rejectWithValue }) => {
     try {
-      await AuthService.resetPassword(token, newPassword);
-      return true;
+      const response = await api.post('/auth/reset-password', data);
+      return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Échec de la réinitialisation du mot de passe');
+      return rejectWithValue(error.response?.data?.message || 'Erreur lors de la réinitialisation du mot de passe');
     }
   }
 );
@@ -166,188 +173,141 @@ const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    // Actions synchrones
     clearError: (state) => {
       state.error = null;
     },
-    
     setUser: (state, action: PayloadAction<User>) => {
       state.user = action.payload;
       state.isAuthenticated = true;
     },
-    
-    setTokens: (state, action: PayloadAction<AuthTokens>) => {
-      state.tokens = action.payload;
-    },
-    
-    updateUser: (state, action: PayloadAction<Partial<User>>) => {
-      if (state.user) {
-        state.user = { ...state.user, ...action.payload };
-      }
-    },
-    
-    setLoading: (state, action: PayloadAction<boolean>) => {
-      state.isLoading = action.payload;
-    },
-    
-    // Réinitialisation du state
-    resetAuth: (state) => {
+    clearAuth: (state) => {
       state.user = null;
       state.tokens = null;
       state.isAuthenticated = false;
-      state.profile = null;
       state.error = null;
-    },
-    
-    // Mise à jour des préférences
-    updateNotificationPreferences: (state, action: PayloadAction<Partial<User>>) => {
-      if (state.user) {
-        state.user = { ...state.user, ...action.payload };
-      }
-    },
-    
-    updateLocationPreferences: (state, action: PayloadAction<Partial<User>>) => {
-      if (state.user) {
-        state.user = { ...state.user, ...action.payload };
-      }
-    },
+    }
   },
   extraReducers: (builder) => {
     builder
-      // Login
-      .addCase(loginUser.pending, (state) => {
-        state.isLoading = true;
-        state.error = null;
-      })
-      .addCase(loginUser.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.user = action.payload.user;
-        state.tokens = action.payload.tokens;
-        state.isAuthenticated = true;
-        state.error = null;
-      })
-      .addCase(loginUser.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload as string;
-      })
-      
       // Register
-      .addCase(registerUser.pending, (state) => {
-        state.isLoading = true;
+      .addCase(register.pending, (state) => {
+        state.loading = true;
         state.error = null;
       })
-      .addCase(registerUser.fulfilled, (state, action) => {
-        state.isLoading = false;
+      .addCase(register.fulfilled, (state, action) => {
+        state.loading = false;
         state.user = action.payload.user;
         state.tokens = action.payload.tokens;
         state.isAuthenticated = true;
         state.error = null;
       })
-      .addCase(registerUser.rejected, (state, action) => {
-        state.isLoading = false;
+      .addCase(register.rejected, (state, action) => {
+        state.loading = false;
         state.error = action.payload as string;
       })
       
-      // Logout
-      .addCase(logoutUser.fulfilled, (state) => {
-        state.user = null;
-        state.tokens = null;
-        state.isAuthenticated = false;
-        state.profile = null;
+      // Login
+      .addCase(login.pending, (state) => {
+        state.loading = true;
         state.error = null;
+      })
+      .addCase(login.fulfilled, (state, action) => {
+        state.loading = false;
+        state.user = action.payload.user;
+        state.tokens = action.payload.tokens;
+        state.isAuthenticated = true;
+        state.error = null;
+      })
+      .addCase(login.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
       })
       
       // Refresh Token
-      .addCase(refreshUserToken.fulfilled, (state, action) => {
+      .addCase(refreshToken.fulfilled, (state, action) => {
         if (state.tokens) {
           state.tokens.access_token = action.payload.access_token;
         }
       })
       
-      // Fetch Profile
-      .addCase(fetchUserProfile.pending, (state) => {
-        state.isLoading = true;
+      // Get Current User
+      .addCase(getCurrentUser.pending, (state) => {
+        state.loading = true;
         state.error = null;
       })
-      .addCase(fetchUserProfile.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.profile = action.payload;
+      .addCase(getCurrentUser.fulfilled, (state, action) => {
+        state.loading = false;
+        state.user = action.payload.user;
+        state.isAuthenticated = true;
         state.error = null;
       })
-      .addCase(fetchUserProfile.rejected, (state, action) => {
-        state.isLoading = false;
+      .addCase(getCurrentUser.rejected, (state, action) => {
+        state.loading = false;
         state.error = action.payload as string;
+        state.isAuthenticated = false;
       })
       
-      // Update Profile
-      .addCase(updateUserProfile.fulfilled, (state, action) => {
-        state.user = action.payload;
-        if (state.profile) {
-          state.profile.user = action.payload;
-        }
-      })
-      
-      // Change Password
-      .addCase(changeUserPassword.rejected, (state, action) => {
-        state.error = action.payload as string;
-      })
-      
-      // Delete Account
-      .addCase(deleteUserAccount.fulfilled, (state) => {
+      // Logout
+      .addCase(logout.fulfilled, (state) => {
         state.user = null;
         state.tokens = null;
         state.isAuthenticated = false;
-        state.profile = null;
         state.error = null;
       })
       
       // Verify Email
-      .addCase(verifyUserEmail.rejected, (state, action) => {
+      .addCase(verifyEmail.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(verifyEmail.fulfilled, (state) => {
+        state.loading = false;
+        if (state.user) {
+          state.user.is_verified = true;
+        }
+        state.error = null;
+      })
+      .addCase(verifyEmail.rejected, (state, action) => {
+        state.loading = false;
         state.error = action.payload as string;
       })
       
       // Forgot Password
-      .addCase(forgotUserPassword.rejected, (state, action) => {
+      .addCase(forgotPassword.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(forgotPassword.fulfilled, (state) => {
+        state.loading = false;
+        state.error = null;
+      })
+      .addCase(forgotPassword.rejected, (state, action) => {
+        state.loading = false;
         state.error = action.payload as string;
       })
       
       // Reset Password
-      .addCase(resetUserPassword.rejected, (state, action) => {
+      .addCase(resetPassword.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(resetPassword.fulfilled, (state) => {
+        state.loading = false;
+        state.error = null;
+      })
+      .addCase(resetPassword.rejected, (state, action) => {
+        state.loading = false;
         state.error = action.payload as string;
       });
-  },
+  }
 });
 
-// Actions
-export const {
-  clearError,
-  setUser,
-  setTokens,
-  updateUser,
-  setLoading,
-  resetAuth,
-  updateNotificationPreferences,
-  updateLocationPreferences,
-} = authSlice.actions;
+export const { clearError, setUser, clearAuth } = authSlice.actions;
 
-// Selecteurs
-export const selectAuth = (state: { auth: AuthState }) => state.auth;
+// Selectors
 export const selectUser = (state: { auth: AuthState }) => state.auth.user;
-export const selectTokens = (state: { auth: AuthState }) => state.auth.tokens;
 export const selectIsAuthenticated = (state: { auth: AuthState }) => state.auth.isAuthenticated;
-export const selectIsLoading = (state: { auth: AuthState }) => state.auth.isLoading;
-export const selectError = (state: { auth: AuthState }) => state.auth.error;
-export const selectProfile = (state: { auth: AuthState }) => state.auth.profile;
-export const selectTrustScore = (state: { auth: AuthState }) => state.auth.user?.trust_score || 0;
-export const selectUserLocation = (state: { auth: AuthState }) => ({
-  latitude: state.auth.user?.latitude,
-  longitude: state.auth.user?.longitude,
-  city: state.auth.user?.city,
-  country: state.auth.user?.country,
-});
+export const selectAuthLoading = (state: { auth: AuthState }) => state.auth.loading;
+export const selectAuthError = (state: { auth: AuthState }) => state.auth.error;
 
-// Export logout action
-export const logout = logoutUser;
-
-// Reducer
 export default authSlice.reducer;

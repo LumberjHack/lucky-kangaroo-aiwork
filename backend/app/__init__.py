@@ -1,5 +1,5 @@
 """
-Application Flask Lucky Kangaroo
+Application Flask Lucky Kangaroo - Factory Pattern
 """
 
 from flask import Flask
@@ -39,7 +39,7 @@ def create_app(config_name=None):
     
     # Déterminer la configuration
     if config_name is None:
-        config_name = os.environ.get('FLASK_ENV', 'default')
+        config_name = os.environ.get('FLASK_ENV', 'development')
     
     # Importer la configuration
     from config import config as app_config
@@ -70,7 +70,16 @@ def create_app(config_name=None):
         return {
             'message': 'Lucky Kangaroo API',
             'version': '1.0.0',
-            'status': 'running'
+            'status': 'running',
+            'endpoints': {
+                'auth': '/api/v1/auth',
+                'users': '/api/v1/users',
+                'listings': '/api/v1/listings',
+                'exchanges': '/api/v1/exchanges',
+                'chat': '/api/v1/chat',
+                'search': '/api/v1/search',
+                'ai': '/api/v1/ai'
+            }
         }
     
     @app.route('/health')
