@@ -1,4 +1,3 @@
-﻿from backend.extensions import db
 """Payment and subscription models for Lucky Kangaroo."""
 from datetime import datetime, timedelta
 from enum import Enum
@@ -148,7 +147,7 @@ class Subscription(db.Model):
     
     @property
     def is_active(self):
-        ""Check if subscription is currently active."""
+        """Check if subscription is currently active."""
         now = datetime.utcnow()
         return (
             self.status == SubscriptionStatus.ACTIVE and
@@ -158,14 +157,14 @@ class Subscription(db.Model):
     
     @property
     def is_trialing(self):
-        ""Check if subscription is in trial period."""
+        """Check if subscription is in trial period."""
         if not self.trial_end:
             return False
         now = datetime.utcnow()
         return self.trial_start <= now <= self.trial_end
     
     def days_until_renewal(self):
-        ""Get number of days until next billing date."""
+        """Get number of days until next billing date."""
         if not self.current_period_end:
             return None
         return (self.current_period_end - datetime.utcnow()).days
@@ -175,7 +174,7 @@ class Subscription(db.Model):
             'id': self.id,
             'status': self.status.value,
             'is_active': self.is_active,
-            'is_trialing': self.is_trialing(),
+            'is_trialing': self.is_trialing,
             'current_period_start': self.current_period_start.isoformat() if self.current_period_start else None,
             'current_period_end': self.current_period_end.isoformat() if self.current_period_end else None,
             'days_until_renewal': self.days_until_renewal(),

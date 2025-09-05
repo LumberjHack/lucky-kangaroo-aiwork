@@ -1,40 +1,68 @@
-# Exclude VCS
-.git
-.gitignore
-
-# Python caches and build artifacts
+# Fichiers et dossiers à ignorer lors du build Docker
 __pycache__/
 *.py[cod]
-*.egg-info/
-.eggs/
-.build/
+*$py.class
+*.so
+.Python
 build/
+develop-eggs/
 dist/
-.mypy_cache/
-.pytest_cache/
-.ruff_cache/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
-# Virtual environments
-.venv/
+# Environnements virtuels
 venv/
 env/
+ENV/
+env.bak/
+venv.bak/
 
-# Logs and temp
-logs/
-*.log
-uploads/
-/tmp/
-.cache/
-
-# OS/editor
-.DS_Store
-Thumbs.db
+# IDE
+.vscode/
+.idea/
 *.swp
 *.swo
+*~
 
-# Node (if any accidentally present)
-node_modules/
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
-# Misc
-*.sqlite*
+# Logs
+*.log
+logs/
+
+# Base de données
 *.db
+*.sqlite
+*.sqlite3
+
+# Uploads (seront montés comme volume)
+uploads/
+
+# Tests
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Documentation
+docs/_build/
+
+# Fichiers temporaires
+*.tmp
+*.temp

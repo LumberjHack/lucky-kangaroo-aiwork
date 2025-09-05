@@ -10,6 +10,10 @@ Ces notes résument les règles, politiques et éléments techniques incontourna
 - **Commits**: privilégier commit/push automatique après chaque changement testé et fonctionnel. Demander confirmation pour opérations sensibles (rebase/merge).
 - **Ne pas réinventer**: analyser l’existant avant d’agir. Ne pas recréer des fichiers déjà présents. Supprimer les doublons si nécessaire (après confirmation).
 
+## Références produit
+- Spécifications intégrées (canonique) : `docs/specifications/lucky-kangaroo-specs-integrated.md`
+- Archive V4 : `docs/specifications/specifications-v4.md`
+
 ## Politique de sauvegarde (backup)
 - **Objectif**: snapshot automatique dans `backend/backup/<timestamp>/` avant toute modification backend.
 - **Format timestamp**: `YYYYMMDD_HHMMSS`.

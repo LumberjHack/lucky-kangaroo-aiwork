@@ -4,14 +4,14 @@ Handles exchange requests, offers, and management.
 """
 
 from flask import request, current_app
-from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
-from flask_restx import Resource, fields, reqparse, marshal
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_restx import Resource, reqparse
 from sqlalchemy import or_
 from datetime import datetime
 
-from ...models.exchange import Exchange, ExchangeMessage
-from ...models.listing import Listing
-from ...models.user import Notification, NotificationType
+from ...models.exchange import Exchange, ExchangeStatus
+from ...models.listing import Listing, ListingStatus
+from ...models.notification import Notification, NotificationType
 from ...extensions import db, socketio
 from . import ns
 
@@ -25,182 +25,163 @@ update_exchange_parser = reqparse.RequestParser()
 update_exchange_parser.add_argument('status', type=str, required=False, 
                                    choices=('pending', 'accepted', 'rejected', 'cancelled'))
 
-# Response models
-exchange_model = ns.model('Exchange', {
-    'id': fields.Integer,
-    'status': fields.String,
-    'created_at': fields.DateTime,
-    'listing': fields.Nested(ns.model('ExchangeListing', {
-        'id': fields.Integer,
-        'title': fields.String,
-        'primary_image': fields.String
-    })),
-    'buyer': fields.Nested(ns.model('ExchangeUser', {
-        'id': fields.Integer,
-        'username': fields.String
-    })),
-    'seller': fields.Nested(ns.model('ExchangeUser', {
-        'id': fields.Integer,
-        'username': fields.String
-    }))
-})
+# We return plain dicts using model to_dict() methods to avoid schema drift.
 
 @ns.route('/exchanges')
 class ExchangeList(Resource):
-    ""Exchange collection endpoint."""
+    """Exchange collection endpoint."""
     
     @jwt_required()
-    @ns.marshal_list_with(exchange_model)
     def get(self):
-        ""Get all exchanges involving the current user."""
+        """Get all exchanges involving the current user."""
         user_id = get_jwt_identity()
         exchanges = Exchange.query.filter(
             or_(
-                Exchange.buyer_id == user_id,
-                Exchange.seller_id == user_id
+                Exchange.requester_id == user_id,
+                Exchange.owner_id == user_id
             )
         ).order_by(Exchange.updated_at.desc()).all()
-        return exchanges, 200
+        return [e.to_dict() for e in exchanges], 200
     
     @jwt_required()
     @ns.expect(create_exchange_parser)
-    @ns.marshal_with(exchange_model, code=201)
     def post(self):
-        ""Create a new exchange request."""
+        """Create a new exchange request."""
         user_id = get_jwt_identity()
         args = create_exchange_parser.parse_args()
-        
+
         listing = Listing.query.get_or_404(args['listing_id'])
-        
-        if listing.status != 'active':
+
+        if listing.status != ListingStatus.ACTIVE:
             return {'message': 'Listing not available'}, 400
-            
+
         if listing.user_id == user_id:
             return {'message': 'Cannot request your own listing'}, 400
-            
+
+        offered_listing_id = args.get('offered_listing_id')
+        if not offered_listing_id:
+            return {'message': 'offered_listing_id is required'}, 400
+
         existing = Exchange.query.filter(
-            Exchange.listing_id == listing.id,
-            Exchange.status.in_(['pending', 'accepted'])
+            Exchange.requested_listing_id == listing.id,
+            Exchange.status.in_([
+                ExchangeStatus.REQUESTED,
+                ExchangeStatus.ACCEPTED,
+                ExchangeStatus.CONFIRMED,
+                ExchangeStatus.IN_PROGRESS,
+            ])
         ).first()
-        
+
         if existing:
             return {'message': 'Active exchange exists'}, 400
-        
+
         exchange = Exchange(
-            listing_id=listing.id,
-            offered_listing_id=args.get('offered_listing_id'),
-            buyer_id=user_id,
-            seller_id=listing.user_id,
-            status='pending'
+            requester_id=user_id,
+            owner_id=listing.user_id,
+            offered_listing_id=offered_listing_id,
+            requested_listing_id=listing.id,
+            message=args.get('message'),
+            status=ExchangeStatus.REQUESTED,
         )
-        
+
         db.session.add(exchange)
-        
-        if args.get('message'):
-            message = ExchangeMessage(
-                exchange_id=exchange.id,
-                sender_id=user_id,
-                content=args['message']
-            )
-            db.session.add(message)
-        
-        listing.status = 'pending'
-        
-        notification = Notification(
+
+        notif = Notification.create_exchange_notification(
             user_id=listing.user_id,
-            type=NotificationType.EXCHANGE_REQUEST,
-            title='New Exchange Request',
-            message=f'New exchange request for "{listing.title}"',
-            data={'exchange_id': exchange.id}
+            exchange=exchange,
+            notification_type=NotificationType.EXCHANGE_REQUEST,
+            additional_data={'requester_id': user_id},
         )
-        db.session.add(notification)
-        
+        db.session.add(notif)
+
         db.session.commit()
-        
-        socketio.emit('exchange_created', {
-            'exchange_id': exchange.id,
-            'seller_id': listing.user_id,
-            'buyer_id': user_id
-        }, room=f'user_{listing.user_id}')
-        
-        return exchange, 201
+
+        socketio.emit(
+            'exchange_created',
+            {
+                'exchange_id': exchange.id,
+                'owner_id': listing.user_id,
+                'requester_id': user_id,
+            },
+            room=f'user_{listing.user_id}',
+        )
+
+        return exchange.to_dict(), 201
 
 @ns.route('/exchanges/<int:exchange_id>')
 class ExchangeResource(Resource):
-    ""Individual exchange endpoint."""
+    """Individual exchange endpoint."""
     
     @jwt_required()
-    @ns.marshal_with(exchange_model)
     def get(self, exchange_id):
-        ""Get exchange details."""
+        """Get exchange details."""
         user_id = get_jwt_identity()
         exchange = Exchange.query.get_or_404(exchange_id)
-        
-        if exchange.buyer_id != user_id and exchange.seller_id != user_id:
+
+        if exchange.requester_id != user_id and exchange.owner_id != user_id:
             return {'message': 'Unauthorized'}, 403
-            
-        return exchange, 200
+
+        return exchange.to_dict(), 200
     
     @jwt_required()
     @ns.expect(update_exchange_parser)
-    @ns.marshal_with(exchange_model)
     def put(self, exchange_id):
-        ""Update an exchange."""
+        """Update an exchange."""
         user_id = get_jwt_identity()
         exchange = Exchange.query.get_or_404(exchange_id)
-        
-        if exchange.seller_id != user_id:
+
+        if exchange.owner_id != user_id:
             return {'message': 'Unauthorized'}, 403
-            
+
         args = update_exchange_parser.parse_args()
-        
+
         if args.get('status'):
-            exchange.status = args['status']
-            exchange.updated_at = datetime.utcnow()
-            
-            if args['status'] == 'accepted':
+            new_status = args['status']
+            if new_status == 'accepted':
+                exchange.accept()
                 self._handle_accept(exchange)
-            elif args['status'] == 'rejected':
+            elif new_status == 'rejected':
+                exchange.cancel()
                 self._handle_reject(exchange)
-            
+            exchange.updated_at = datetime.utcnow()
             db.session.commit()
-        
-        return exchange, 200
+
+        return exchange.to_dict(), 200
     
     def _handle_accept(self, exchange):
-        ""Handle exchange acceptance."""
-        exchange.listing.status = 'pending'
-        
-        notification = Notification(
-            user_id=exchange.buyer_id,
-            type=NotificationType.EXCHANGE_ACCEPTED,
-            title='Exchange Accepted',
-            message=f'Your exchange for "{exchange.listing.title}" was accepted',
-            data={'exchange_id': exchange.id}
+        """Handle exchange acceptance."""
+        notif = Notification.create_exchange_notification(
+            user_id=exchange.requester_id,
+            exchange=exchange,
+            notification_type=NotificationType.EXCHANGE_ACCEPTED,
         )
-        db.session.add(notification)
-        
-        socketio.emit('exchange_updated', {
-            'exchange_id': exchange.id,
-            'status': 'accepted',
-            'buyer_id': exchange.buyer_id
-        }, room=f'user_{exchange.buyer_id}')
+        db.session.add(notif)
+
+        socketio.emit(
+            'exchange_updated',
+            {
+                'exchange_id': exchange.id,
+                'status': 'accepted',
+                'requester_id': exchange.requester_id,
+            },
+            room=f'user_{exchange.requester_id}',
+        )
     
     def _handle_reject(self, exchange):
-        ""Handle exchange rejection."""
-        exchange.listing.status = 'active'
-        
-        notification = Notification(
-            user_id=exchange.buyer_id,
-            type=NotificationType.EXCHANGE_REJECTED,
-            title='Exchange Declined',
-            message=f'Your exchange for "{exchange.listing.title}" was declined',
-            data={'exchange_id': exchange.id}
+        """Handle exchange rejection."""
+        notif = Notification.create_exchange_notification(
+            user_id=exchange.requester_id,
+            exchange=exchange,
+            notification_type=NotificationType.EXCHANGE_CANCELLED,
         )
-        db.session.add(notification)
-        
-        socketio.emit('exchange_updated', {
-            'exchange_id': exchange.id,
-            'status': 'rejected',
-            'buyer_id': exchange.buyer_id
-        }, room=f'user_{exchange.buyer_id}')
+        db.session.add(notif)
+
+        socketio.emit(
+            'exchange_updated',
+            {
+                'exchange_id': exchange.id,
+                'status': 'rejected',
+                'requester_id': exchange.requester_id,
+            },
+            room=f'user_{exchange.requester_id}',
+        )

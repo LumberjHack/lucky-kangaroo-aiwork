@@ -1,5 +1,5 @@
-from flask import request
-from .extensions import socketio
+﻿from flask import request
+from extensions import socketio
 
 @socketio.on('connect')
 def on_connect():
@@ -19,3 +19,4 @@ def on_message(data):
     msg = data.get('message')
     if room and msg:
         socketio.emit('message', {"from": request.sid, "message": msg}, to=room)
+

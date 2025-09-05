@@ -1,52 +1,67 @@
-services:
+﻿services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: lk-postgres
+    environment:
+      POSTGRES_DB: luckykangaroo
+      POSTGRES_USER: lk
+      POSTGRES_PASSWORD: lkpass
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lk -d luckykangaroo"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7
+    container_name: lk-redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
   app:
     build: .
-    restart: unless-stopped
+    container_name: lk-app
+    command: ["gunicorn","--bind","0.0.0.0:5000","--workers","2","--worker-class","gevent","--timeout","120","wsgi:application"]
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     ports:
       - "5000:5000"
-    env_file: .env
-    environment:
-      - FLASK_ENV=production
-      # Utiliser l'infra commune existante via l'hôte (Docker Desktop)
-      - DATABASE_URL=postgresql+psycopg://lk:lkpass@host.docker.internal:5432/luckykangaroo
-      - SQLALCHEMY_DATABASE_URI=postgresql+psycopg://lk:lkpass@host.docker.internal:5432/luckykangaroo
-      - REDIS_URL=redis://host.docker.internal:6379/0
-      - CELERY_BROKER_URL=redis://host.docker.internal:6379/1
-      - CELERY_RESULT_BACKEND=redis://host.docker.internal:6379/1
-      - SOCKETIO_MESSAGE_QUEUE=redis://host.docker.internal:6379/2
-    volumes:
-      - ./uploads:/app/uploads
-      - ./logs:/app/logs
+    restart: unless-stopped
 
   worker:
     build: .
-    command: celery -A app.celery worker --loglevel=info
-    restart: unless-stopped
+    container_name: lk-worker
+    command: ["celery","-A","celery_worker.celery","worker","--loglevel=INFO"]
     env_file: .env
-    environment:
-      - FLASK_ENV=production
-      - DATABASE_URL=postgresql+psycopg://lk:lkpass@host.docker.internal:5432/luckykangaroo
-      - SQLALCHEMY_DATABASE_URI=postgresql+psycopg://lk:lkpass@host.docker.internal:5432/luckykangaroo
-      - REDIS_URL=redis://host.docker.internal:6379/0
-      - CELERY_BROKER_URL=redis://host.docker.internal:6379/1
-      - CELERY_RESULT_BACKEND=redis://host.docker.internal:6379/1
-    volumes:
-      - ./uploads:/app/uploads
-      - ./logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
 
   beat:
     build: .
-    command: celery -A app.celery beat --loglevel=info
-    restart: unless-stopped
+    container_name: lk-beat
+    command: ["celery","-A","celery_worker.celery","beat","--loglevel=INFO"]
     env_file: .env
-    environment:
-      - FLASK_ENV=production
-      - DATABASE_URL=postgresql+psycopg://lk:lkpass@host.docker.internal:5432/luckykangaroo
-      - SQLALCHEMY_DATABASE_URI=postgresql+psycopg://lk:lkpass@host.docker.internal:5432/luckykangaroo
-      - REDIS_URL=redis://host.docker.internal:6379/0
-      - CELERY_BROKER_URL=redis://host.docker.internal:6379/1
-      - CELERY_RESULT_BACKEND=redis://host.docker.internal:6379/1
-    volumes:
-      - ./uploads:/app/uploads
-      - ./logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
 
+volumes:
+  pgdata:

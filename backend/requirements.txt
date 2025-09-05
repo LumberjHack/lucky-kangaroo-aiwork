@@ -1,123 +1,243 @@
-# Core Dependencies
-Flask==2.3.3
-Werkzeug==2.3.7  # Aligné avec Flask 2.3.x
-Jinja2==3.1.3
-itsdangerous==2.2.0
-click==8.1.7
-blinker==1.9.0
-python-dotenv==1.0.1
-gunicorn==22.0.0
-
-# Database
-Flask-SQLAlchemy==3.1.1
-SQLAlchemy==2.0.36  # Version stable avec Flask-SQLAlchemy 3.1.1
-psycopg[binary]==3.2.9
-alembic==1.13.1
-Flask-Migrate==4.0.7
-sqlalchemy-utils==0.41.2  # Version compatible avec SQLAlchemy 2.0.x
-
-# API & Serialization
-Flask-RESTx==1.2.0
-marshmallow==3.21.1  # Dernière version majeure 3.x
-Flask-Marshmallow==1.2.1
-marshmallow-sqlalchemy==0.29.0
-webargs==8.7.0
-apispec==6.4.0
-apispec-webframeworks==1.2.0
-
-# Authentication & Security
+# Flask et extensions
+Flask==3.0.0
+Flask-CORS==4.0.0
 Flask-JWT-Extended==4.6.0
-PyJWT==2.10.1
-Flask-Principal==0.4.0
-passlib==1.7.4
-Flask-Login==0.6.3
-Flask-Bcrypt==1.0.1
-Flask-Talisman==1.1.0
-python-jose==3.3.0
-python-keycloak==3.12.0
-
-# Search
-opensearch-py==2.7.1
-elasticsearch-dsl==7.4.1  # Version compatible avec opensearch-py
-elasticsearch==7.17.9  # Aligné avec elasticsearch-dsl 7.x et urllib3<2
-
-# Async & Background Tasks
-celery==5.4.0
-redis==5.2.1  # Mise à jour vers la dernière version stable
-Flask-SocketIO==5.3.7
-eventlet==0.36.1
-gevent==24.2.1
-gevent-websocket==0.10.1
-
-# Rate Limiting & Caching
-Flask-Limiter==3.8.0
-Flask-Caching==2.3.1
-# redis-py-cluster supprimé: le support cluster est intégré dans redis>=4.2
-Flask-Cors==4.0.1
-
-# File Uploads & Storage
-Pillow==10.4.0
-boto3==1.34.70
-botocore==1.34.70
-python-magic==0.4.27
-
-# Email
+Flask-Limiter==3.5.0
+Flask-SocketIO==5.3.6
+Flask-SQLAlchemy==3.1.1
+Flask-Migrate==4.0.5
 Flask-Mail==0.9.1
-email-validator==2.1.0.post1
+Flask-Bcrypt==1.0.1
 
-# Payments
-stripe==8.10.0
-paypalrestsdk==1.13.3
+# Base de données
+SQLAlchemy==2.0.23
+psycopg2-binary==2.9.9
+redis==5.0.1
+alembic==1.13.1
 
-# AI & Machine Learning
-openai==1.30.5
-transformers==4.38.2
-torch==2.2.1
-sentence-transformers==2.6.1
-numpy==1.26.4
-pandas==2.2.1
-scikit-learn==1.4.1.post1
-nltk==3.8.1
+# Validation et sérialisation
+marshmallow==3.20.1
+marshmallow-sqlalchemy==0.29.0
 
-# Monitoring & Logging
-sentry-sdk[flask]==1.44.1
-python-json-logger==2.0.7
-structlog==24.2.0
+# Tâches asynchrones
+celery==5.3.4
 
-# Testing
-pytest==8.1.1
+# Géolocalisation et cartes
+geopy==2.4.1
+shapely==2.0.2
+
+# IA et traitement d'images
+opencv-python==4.8.1.78
+Pillow==10.1.0
+tensorflow==2.15.0
+numpy==1.24.3
+scikit-learn==1.3.2
+
+# Sécurité et cryptage
+cryptography==41.0.7
+bcrypt==4.1.2
+PyJWT==2.8.0
+
+# Utilitaires
+python-dotenv==1.0.0
+requests==2.31.0
+python-multipart==0.0.6
+Werkzeug==3.0.1
+
+# Tests
+pytest==7.4.3
+pytest-flask==1.3.0
+pytest-cov==4.1.0
+factory-boy==3.3.0
+
+# Monitoring et logs
+sentry-sdk[flask]==1.38.0
+structlog==23.2.0
+
+# API et documentation
+flasgger==0.9.7.1
+apispec==6.3.0
+
+# Cache et sessions
+Flask-Session==0.5.0
+Flask-Caching==2.1.0
+
+# Notifications
+twilio==8.10.0
+sendgrid==6.10.0
+
+# Géolocalisation avancée
+geopy==2.4.1
+folium==0.14.0
+
+# Traitement des images
+Pillow==10.1.0
+opencv-python==4.8.1.78
+
+# IA et ML
+tensorflow==2.15.0
+torch==2.1.1
+transformers==4.35.2
+numpy==1.24.3
+pandas==2.1.4
+scikit-learn==1.3.2
+
+# Sécurité avancée
+cryptography==41.0.7
+bcrypt==4.1.2
+PyJWT==2.8.0
+passlib==1.7.4
+
+# Utilitaires avancés
+python-dotenv==1.0.0
+requests==2.31.0
+python-multipart==0.0.6
+Werkzeug==3.0.1
+click==8.1.7
+itsdangerous==2.1.2
+Jinja2==3.1.2
+MarkupSafe==2.1.3
+
+# Tests avancés
+pytest==7.4.3
+pytest-flask==1.3.0
 pytest-cov==4.1.0
 pytest-mock==3.12.0
 factory-boy==3.3.0
-Faker==24.12.0
+coverage==7.3.2
 
-# Development & Code Quality
-black==24.3.0
-flake8==7.0.0
-isort==5.13.2
-mypy==1.8.0
-types-python-dateutil==2.8.19.20240311
+# Monitoring et observabilité
+sentry-sdk[flask]==1.38.0
+structlog==23.2.0
+prometheus-client==0.19.0
 
-# Utilities
-python-dateutil==2.9.0.post0
-pytz==2024.1
-requests==2.32.3
-urllib3==1.26.19  # compatible opensearch-py>=1.26.19 et elasticsearch 7.x
-python-slugify==8.0.4
-phonenumbers==8.13.31
-pycountry==24.6.1
-geoalchemy2==0.15.0
-Shapely==2.0.3
-pyproj==3.6.1
-greenlet==3.2.4
+# API et documentation
+flasgger==0.9.7.1
+apispec==6.3.0
+marshmallow-jsonschema==0.14.0
 
-# Optional: Background removal (heavy)
-# rembg>=2.0.0
+# Cache et sessions avancés
+Flask-Session==0.5.0
+Flask-Caching==2.1.0
+redis==5.0.1
 
-# Optional: PDF generation
-# reportlab==4.1.0
-# xhtml2pdf==0.2.16
+# Notifications et communications
+twilio==8.10.0
+sendgrid==6.10.0
+websockets==12.0
 
-# Optional: Excel export
-# openpyxl==3.1.2
-# pandas[excel]==2.2.1
+# Géolocalisation et cartes avancées
+geopy==2.4.1
+folium==0.14.0
+geopandas==0.14.1
+
+# Traitement des images avancé
+Pillow==10.1.0
+opencv-python==4.8.1.78
+imageio==2.33.1
+
+# IA et ML avancés
+tensorflow==2.15.0
+torch==2.1.1
+transformers==4.35.2
+numpy==1.24.3
+pandas==2.1.4
+scikit-learn==1.3.2
+xgboost==2.0.2
+lightgbm==4.1.0
+
+# Sécurité et cryptage avancés
+cryptography==41.0.7
+bcrypt==4.1.2
+PyJWT==2.8.0
+passlib==1.7.4
+argon2-cffi==23.1.0
+
+# Utilitaires et outils
+python-dotenv==1.0.0
+requests==2.31.0
+python-multipart==0.0.6
+Werkzeug==3.0.1
+click==8.1.7
+itsdangerous==2.1.2
+Jinja2==3.1.2
+MarkupSafe==2.1.3
+python-dateutil==2.8.2
+pytz==2023.3
+
+# Tests et qualité
+pytest==7.4.3
+pytest-flask==1.3.0
+pytest-cov==4.1.0
+pytest-mock==3.12.0
+pytest-asyncio==0.21.1
+factory-boy==3.3.0
+coverage==7.3.2
+black==23.11.0
+flake8==6.1.0
+mypy==1.7.1
+
+# Monitoring et observabilité avancés
+sentry-sdk[flask]==1.38.0
+structlog==23.2.0
+prometheus-client==0.19.0
+opentelemetry-api==1.21.0
+opentelemetry-sdk==1.21.0
+opentelemetry-instrumentation-flask==0.42b0
+
+# API et documentation avancés
+flasgger==0.9.7.1
+apispec==6.3.0
+marshmallow-jsonschema==0.14.0
+flask-restx==1.3.0
+
+# Cache et sessions avancés
+Flask-Session==0.5.0
+Flask-Caching==2.1.0
+redis==5.0.1
+aioredis==2.0.1
+
+# Notifications et communications avancés
+twilio==8.10.0
+sendgrid==6.10.0
+websockets==12.0
+aiohttp==3.9.1
+
+# Géolocalisation et cartes avancées
+geopy==2.4.1
+folium==0.14.0
+geopandas==0.14.1
+shapely==2.0.2
+
+# Traitement des images et IA
+Pillow==10.1.0
+opencv-python==4.8.1.78
+imageio==2.33.1
+tensorflow==2.15.0
+torch==2.1.1
+transformers==4.35.2
+numpy==1.24.3
+pandas==2.1.4
+scikit-learn==1.3.2
+xgboost==2.0.2
+lightgbm==4.1.0
+
+# Sécurité et cryptage
+cryptography==41.0.7
+bcrypt==4.1.2
+PyJWT==2.8.0
+passlib==1.7.4
+argon2-cffi==23.1.0
+python-jose==3.3.0
+
+# Utilitaires
+python-dotenv==1.0.0
+requests==2.31.0
+python-multipart==0.0.6
+Werkzeug==3.0.1
+click==8.1.7
+itsdangerous==2.1.2
+Jinja2==3.1.2
+MarkupSafe==2.1.3
+python-dateutil==2.8.2
+pytz==2023.3

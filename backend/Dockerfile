@@ -1,54 +1,43 @@
-# Build stage
-FROM python:3.11-slim as builder
-
-WORKDIR /app
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Python dependencies (diagnostic + install propre)
-COPY requirements.txt .
-# 1) Afficher le contenu des requirements utilisés dans l'image
-RUN echo "===== requirements.txt in image =====" \
-    && sed -n '1,200p' requirements.txt \
-    && echo "===== end requirements.txt ====="
-# 2) Mettre à jour pip et installer sans cache ni --user
-RUN python -V && pip -V \
-    && pip install --no-cache-dir --upgrade pip setuptools wheel \
-    && pip --version \
-    && pip install --no-cache-dir -r requirements.txt \
-    && pip check \
-    && pip freeze | sort
-
-# Runtime stage
+# Dockerfile pour Lucky Kangaroo Backend
 FROM python:3.11-slim
 
-WORKDIR /app
-
-# Install runtime dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq5 \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy Python environment from builder (global install)
-COPY --from=builder /usr/local /usr/local
-
-# Copy application code
-COPY . .
-
-# Create necessary directories
-RUN mkdir -p /app/logs /app/uploads
-
-# Set environment variables
+# Définir les variables d'environnement
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 ENV FLASK_APP=app.py
 ENV FLASK_ENV=production
-ENV PYTHONUNBUFFERED=1
 
-# Expose port
+# Créer le répertoire de travail
+WORKDIR /app
+
+# Installer les dépendances système
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    libpq-dev \
+    libffi-dev \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copier les fichiers de dépendances
+COPY requirements.txt .
+
+# Installer les dépendances Python
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copier le code source
+COPY . .
+
+# Créer les répertoires nécessaires
+RUN mkdir -p uploads/avatars uploads/covers uploads/listings uploads/ai_analysis
+
+# Créer un utilisateur non-root
+RUN adduser --disabled-password --gecos '' appuser
+RUN chown -R appuser:appuser /app
+USER appuser
+
+# Exposer le port
 EXPOSE 5000
 
-# Command to run the application (note: wsgi exports `application`)
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "--threads", "2", "--worker-class", "gevent", "--timeout", "120", "wsgi:application"]
+# Commande par défaut
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "--timeout", "120", "app:app"]
